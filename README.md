@@ -121,8 +121,9 @@ MyMES/
 
 ## Prerequisites
 
-- Docker Desktop (local) or Docker Engine + Compose (server)
-- The .NET 10 SDK is only needed for the non-Docker debugging route below
+- Docker Desktop (local) or Docker Engine + Compose (server). Needed for the Docker route **and**
+  for the Visual Studio route, which reuses the Docker SQL Server as its database.
+- The .NET 10 SDK — only needed to run or debug the app in Visual Studio.
 
 ---
 
@@ -197,28 +198,38 @@ the database are the same.
 
 ---
 
-## Running without Docker (Visual Studio debugging only)
+## Running in Visual Studio (debugging)
 
-Use this route only when you want breakpoints, hot reload and step-through debugging in Visual
-Studio. You then manage the database yourself — a local SQL Server, or LocalDB. In Development the
-database migrates itself on start-up (`Database:AutoMigrate` is `true`), so no manual migration is
-needed.
+Use this when you want breakpoints, hot reload and step-through debugging. The app runs in Visual
+Studio, but the **database still runs in Docker** — reusing the same SQL Server keeps everything on
+one connection string. LocalDB is not recommended: the .NET provider used here has trouble with it.
 
-### 1. Configure the database
+### 1. Start the SQL Server container
 
-`src/Host/MyMES.Api/appsettings.Development.json` points at a local SQL Server with Windows
-authentication. Override it with user-secrets if yours differs. On a machine with only Visual
-Studio's **LocalDB** (no full SQL Server):
+Only the database runs in Docker; the app runs in VS.
 
 ```bash
-dotnet user-secrets --project src/Host/MyMES.Api set "ConnectionStrings:MyMes" "Server=(localdb)\MSSQLLocalDB;Database=MyMES;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
+docker compose up -d sqlserver
 ```
 
-### 2. Create the first administrator
+Wait until `docker ps` shows `(healthy)` for `mymes-sqlserver`, then leave it running while you
+debug.
+
+### 2. Point the API at it with user-secrets
+
+Use `127.0.0.1`, **not** `localhost` — on some machines `localhost` resolves to IPv6 while Docker
+maps only IPv4, which makes the connection time out. Use the same `MSSQL_SA_PASSWORD` as in `.env`:
+
+```bash
+dotnet user-secrets --project src/Host/MyMES.Api set "ConnectionStrings:MyMes" "Server=127.0.0.1,1433;Database=MyMES;User Id=sa;Password=YOUR_MSSQL_SA_PASSWORD;TrustServerCertificate=True;MultipleActiveResultSets=True"
+```
+
+### 3. Create the first administrator
 
 No credentials are compiled into the source. Supply them once through user-secrets; the seeder
-creates the account only when no administrator exists yet, and logs a warning if nothing is
-configured.
+creates the account **only when no administrator exists yet**. If the database already has an
+administrator (for example from a previous Docker run), these values are ignored and you sign in
+with that existing account.
 
 ```bash
 dotnet user-secrets --project src/Host/MyMES.Api set "Identity:Bootstrap:AdministratorUserName" "admin"
@@ -239,7 +250,13 @@ token dies on restart:
 dotnet user-secrets --project src/Host/MyMES.Api set "Jwt:Key" "at-least-32-characters-of-random-data-here"
 ```
 
-### 3. Start the three hosts
+### 4. Start the three hosts
+
+In Visual Studio: right-click the solution → **Configure Startup Projects…** → **Multiple startup
+projects**, and set `MyMES.Api`, `MyMES.Web` and `MyMES.MachineService` to **Start** (API first).
+Then press **F5**.
+
+Or from the command line:
 
 ```bash
 dotnet run --project src/Host/MyMES.Api
@@ -253,7 +270,8 @@ dotnet run --project src/Host/MyMES.Web
 dotnet run --project src/Host/MyMES.MachineService
 ```
 
-The ports are the same as in the Docker quick start above.
+The ports are the same as in the Docker quick start. The API applies migrations itself on start-up
+(`Database:AutoMigrate` is `true` in Development).
 
 ---
 
