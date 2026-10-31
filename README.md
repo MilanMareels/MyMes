@@ -127,70 +127,24 @@ MyMES/
 
 ## Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- SQL Server 2022 (or Docker, which brings its own)
-- Docker Desktop, for the container route
+- Docker Desktop (local) or Docker Engine + Compose (server)
+- The .NET 10 SDK is only needed for the non-Docker debugging route below
 
 ---
 
-## Running it locally
+## Quick start (Docker)
 
-### 1. Configure the database
-
-`src/Host/MyMES.Api/appsettings.Development.json` points at a local SQL Server with Windows
-authentication. Change it if yours differs, or override it without touching the file:
+This is the recommended way to run MyMES — locally, in development and in production. The same
+`docker-compose.yml` is used everywhere; only the values in `.env` differ.
 
 ```bash
-dotnet user-secrets --project src/Host/MyMES.Api set "ConnectionStrings:MyMes" "Server=localhost;Database=MyMES;Trusted_Connection=True;TrustServerCertificate=True"
+cp .env.example .env
 ```
 
-### 2. Apply the migrations
+Fill in the secrets in `.env`, then:
 
 ```bash
-dotnet tool restore
-```
-
-```bash
-dotnet ef database update --project src/Infrastructure/MyMES.Persistence --startup-project src/Host/MyMES.Api
-```
-
-### 3. Create the first administrator
-
-No credentials are compiled into the source. Supply them once through user-secrets; the seeder
-creates the account only when no administrator exists yet, and logs a warning if nothing is
-configured.
-
-```bash
-dotnet user-secrets --project src/Host/MyMES.Api set "Identity:Bootstrap:AdministratorUserName" "admin"
-```
-
-```bash
-dotnet user-secrets --project src/Host/MyMES.Api set "Identity:Bootstrap:AdministratorEmail" "admin@example.com"
-```
-
-```bash
-dotnet user-secrets --project src/Host/MyMES.Api set "Identity:Bootstrap:AdministratorPassword" "Choose-A-Strong-One-1"
-```
-
-Also set a signing key, or the API mints a throwaway one per process in Development and every
-token dies on restart:
-
-```bash
-dotnet user-secrets --project src/Host/MyMES.Api set "Jwt:Key" "at-least-32-characters-of-random-data-here"
-```
-
-### 4. Start the three hosts
-
-```bash
-dotnet run --project src/Host/MyMES.Api
-```
-
-```bash
-dotnet run --project src/Host/MyMES.Web
-```
-
-```bash
-dotnet run --project src/Host/MyMES.MachineService
+docker compose up -d --build
 ```
 
 | | |
@@ -200,24 +154,12 @@ dotnet run --project src/Host/MyMES.MachineService
 | SignalR hub | http://localhost:5100/hubs/shop-floor |
 | Health | `/health/live`, `/health/ready` |
 
----
+Required values in `.env`:
 
-## Running it in Docker
-
-```bash
-cp .env.example .env
-```
-
-Fill in `MSSQL_SA_PASSWORD`, `JWT_SIGNING_KEY` and the administrator values, then:
-
-```bash
-docker compose up -d --build
-```
-
-| | |
-|---|---|
-| Front end | http://localhost:5200 |
-| API | http://localhost:5100/swagger |
+- `MSSQL_SA_PASSWORD` — a strong password; SQL Server rejects weak ones.
+- `JWT_SIGNING_KEY` — at least 32 characters. Generate one with `openssl rand -base64 48`.
+- `MYMES_ADMIN_USERNAME`, `MYMES_ADMIN_EMAIL`, `MYMES_ADMIN_PASSWORD` — the first administrator,
+  created once on the first start-up.
 
 Other operations:
 
@@ -242,7 +184,82 @@ Notes on the compose file:
   the process started.
 - `Database__AutoMigrate` is `true` in the stack so one command brings everything up. Turn it off
   for a real deployment and migrate as a controlled release step.
+- In `Production` the web app marks its login cookie `Secure`, so the browser only sends it over
+  HTTPS. To reach the app over plain HTTP (for example a home server), set
+  `ASPNETCORE_ENVIRONMENT=Development` in `.env`; for anything public, put an HTTPS reverse proxy
+  in front instead.
 - No password appears in `docker-compose.yml`; everything comes from `.env`, which is git-ignored.
+
+### Development mode (optional)
+
+For verbose logging and Swagger while developing, apply the dev overlay on top of the base file:
+
+```bash
+docker compose -f docker-compose.yml -f deployment/compose/docker-compose.dev.yml up -d --build
+```
+
+The overlay only adds developer-friendly settings (Debug log level, Swagger on); the services and
+the database are the same.
+
+---
+
+## Running without Docker (Visual Studio debugging only)
+
+Use this route only when you want breakpoints, hot reload and step-through debugging in Visual
+Studio. You then manage the database yourself — a local SQL Server, or LocalDB. In Development the
+database migrates itself on start-up (`Database:AutoMigrate` is `true`), so no manual migration is
+needed.
+
+### 1. Configure the database
+
+`src/Host/MyMES.Api/appsettings.Development.json` points at a local SQL Server with Windows
+authentication. Override it with user-secrets if yours differs. On a machine with only Visual
+Studio's **LocalDB** (no full SQL Server):
+
+```bash
+dotnet user-secrets --project src/Host/MyMES.Api set "ConnectionStrings:MyMes" "Server=(localdb)\MSSQLLocalDB;Database=MyMES;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
+```
+
+### 2. Create the first administrator
+
+No credentials are compiled into the source. Supply them once through user-secrets; the seeder
+creates the account only when no administrator exists yet, and logs a warning if nothing is
+configured.
+
+```bash
+dotnet user-secrets --project src/Host/MyMES.Api set "Identity:Bootstrap:AdministratorUserName" "admin"
+```
+
+```bash
+dotnet user-secrets --project src/Host/MyMES.Api set "Identity:Bootstrap:AdministratorEmail" "admin@example.com"
+```
+
+```bash
+dotnet user-secrets --project src/Host/MyMES.Api set "Identity:Bootstrap:AdministratorPassword" "Choose-A-Strong-One-1"
+```
+
+Also set a signing key, or the API mints a throwaway one per process in Development and every
+token dies on restart:
+
+```bash
+dotnet user-secrets --project src/Host/MyMES.Api set "Jwt:Key" "at-least-32-characters-of-random-data-here"
+```
+
+### 3. Start the three hosts
+
+```bash
+dotnet run --project src/Host/MyMES.Api
+```
+
+```bash
+dotnet run --project src/Host/MyMES.Web
+```
+
+```bash
+dotnet run --project src/Host/MyMES.MachineService
+```
+
+The ports are the same as in the Docker quick start above.
 
 ---
 
