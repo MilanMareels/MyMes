@@ -224,6 +224,10 @@ maps only IPv4, which makes the connection time out. Use the same `MSSQL_SA_PASS
 dotnet user-secrets --project src/Host/MyMES.Api set "ConnectionStrings:MyMes" "Server=127.0.0.1,1433;Database=MyMES;User Id=sa;Password=YOUR_MSSQL_SA_PASSWORD;TrustServerCertificate=True;MultipleActiveResultSets=True"
 ```
 
+> This user-secret **overrides** the `ConnectionStrings:MyMes` in `appsettings.Development.json`
+> (which points at a Windows-authenticated local SQL Server). User-secrets are loaded last, so they
+> always win.
+
 ### 3. Create the first administrator
 
 No credentials are compiled into the source. Supply them once through user-secrets; the seeder
@@ -277,22 +281,26 @@ The ports are the same as in the Docker quick start. The API applies migrations 
 
 ## Database migrations
 
+Migrations are managed with Visual Studio's **Package Manager Console** (Tools → NuGet Package
+Manager → Package Manager Console). Set the two dropdowns to **Default project** =
+`MyMES.Persistence` and **Startup project** = `MyMES.Api`, then:
+
 Create one:
 
-```bash
-dotnet ef migrations add <Name> --project src/Infrastructure/MyMES.Persistence --startup-project src/Host/MyMES.Api
+```powershell
+Add-Migration <Name>
 ```
 
 Apply it:
 
-```bash
-dotnet ef database update --project src/Infrastructure/MyMES.Persistence --startup-project src/Host/MyMES.Api
+```powershell
+Update-Database
 ```
 
 Produce a script for a DBA to review instead of running it directly:
 
-```bash
-dotnet ef migrations script --idempotent --project src/Infrastructure/MyMES.Persistence --startup-project src/Host/MyMES.Api --output migrate.sql
+```powershell
+Script-Migration -Idempotent -Output migrate.sql
 ```
 
 `EnsureCreated` is never used: it builds a schema with no migration history, after which no

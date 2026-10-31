@@ -1,3 +1,5 @@
+using System.IO;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using MyMES.Abstractions.Security;
@@ -16,21 +18,21 @@ namespace MyMES.Persistence;
 /// generatable on a laptop with nothing running, so the factory is explicit.
 /// </para>
 /// <para>
-/// The connection string is read from <c>MYMES_MIGRATIONS_CONNECTION</c> when present and
-/// otherwise falls back to local SQL Server. It is only ever used to read the provider's shape
-/// while scaffolding, never to connect during <c>migrations add</c>.
+/// The connection string is read from <c>MYMES_MIGRATIONS_CONNECTION</c> when present, then from
+/// the API's user-secrets, and finally falls back to local SQL Server. It is only ever used to read
+/// the provider's shape while scaffolding, never to connect during <c>migrations add</c>.
 /// </para>
 /// </remarks>
 public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<MyMesDbContext>
 {
+    private const string UserSecretsId = "mymes-api-2026";
+
     private const string DefaultConnection =
         "Server=localhost;Database=MyMES;Trusted_Connection=True;TrustServerCertificate=True";
 
     public MyMesDbContext CreateDbContext(string[] args)
     {
-        var connectionString =
-            Environment.GetEnvironmentVariable("MYMES_MIGRATIONS_CONNECTION")
-            ?? DefaultConnection;
+        var connectionString = ResolveConnectionString();
 
         var options = new DbContextOptionsBuilder<MyMesDbContext>()
             .UseSqlServer(connectionString, sql =>
@@ -45,6 +47,47 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<MyM
             new DesignTimeDateTimeProvider(),
             new DesignTimeCurrentUser(),
             new DesignTimeEventBus());
+    }
+
+    /// <summary>
+    /// Resolves the connection string for migrations: an explicit
+    /// <c>MYMES_MIGRATIONS_CONNECTION</c> wins, then the API's user-secrets (so migrations target
+    /// the same database the running app uses), then a local SQL Server fallback.
+    /// </summary>
+    private static string ResolveConnectionString()
+    {
+        var fromEnv = Environment.GetEnvironmentVariable("MYMES_MIGRATIONS_CONNECTION");
+        if (!string.IsNullOrWhiteSpace(fromEnv))
+        {
+            return fromEnv;
+        }
+
+        var secretsPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Microsoft", "UserSecrets", UserSecretsId, "secrets.json");
+
+        if (File.Exists(secretsPath))
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(File.ReadAllText(secretsPath));
+                if (document.RootElement.TryGetProperty("ConnectionStrings:MyMes", out var value)
+                    && value.ValueKind == JsonValueKind.String)
+                {
+                    return value.GetString() ?? DefaultConnection;
+                }
+            }
+            catch (JsonException)
+            {
+                // Malformed secrets file; fall back.
+            }
+            catch (IOException)
+            {
+                // Unreadable secrets file; fall back.
+            }
+        }
+
+        return DefaultConnection;
     }
 
     private sealed class DesignTimeDateTimeProvider : IDateTimeProvider
