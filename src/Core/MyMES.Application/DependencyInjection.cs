@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MyMES.Application.Dashboard;
+using MyMES.Application.Integrations;
 using MyMES.Application.Machines;
 using MyMES.Application.Production;
 using MyMES.Application.Products;
@@ -23,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IProductionOrderService, ProductionOrderService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IErpIngestionService, ErpIngestionService>();
 
         services.AddValidatorsFromAssemblyContaining<MyMesApplicationMarker>(ServiceLifetime.Singleton);
         services.AddInProcessEventBus();

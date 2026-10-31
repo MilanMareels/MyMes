@@ -1,0 +1,103 @@
+@page "/incoming-messages"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Administrator")]
+
+@inject MyMesApiClient Api
+
+<PageTitle>ERP messages — MyMES</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1>ERP messages</h1>
+        <p class="muted">Incoming ERP messages and their processing status</p>
+    </div>
+</div>
+
+<ErrorAlert Message="@_error" OnRetry="LoadAsync" />
+
+<div class="panel">
+    <div class="panel-head">
+        <div class="chips">
+            <button type="button" class="chip @(_filter is null ? "on" : "")"
+                    @onclick="() => FilterAsync(null)">All</button>
+            <button type="button" class="chip @(_filter == IncomingMessageStatusDto.New ? "on" : "")"
+                    @onclick="() => FilterAsync(IncomingMessageStatusDto.New)">New</button>
+            <button type="button" class="chip @(_filter == IncomingMessageStatusDto.Processed ? "on" : "")"
+                    @onclick="() => FilterAsync(IncomingMessageStatusDto.Processed)">Processed</button>
+            <button type="button" class="chip @(_filter == IncomingMessageStatusDto.Failed ? "on" : "")"
+                    @onclick="() => FilterAsync(IncomingMessageStatusDto.Failed)">Failed</button>
+        </div>
+    </div>
+
+    <div class="panel-body flush">
+        @if (_loading)
+        {
+            <LoadingPanel Message="Loading messages" />
+        }
+        else if (_messages is null || _messages.Count == 0)
+        {
+            <EmptyState Title="No messages" Message="No incoming ERP messages match this filter." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>Received</th>
+                            <th>Reference</th>
+                            <th>Product</th>
+                            <th>Status</th>
+                            <th>Error</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var message in _messages)
+                        {
+                            <tr>
+                                <td class="muted small">@message.ReceivedAtUtc.ToLocalTime().ToString("dd/MM/yy HH:mm")</td>
+                                <td>@message.ExternalReference</td>
+                                <td>@message.ProductCode</td>
+                                <td>@message.Status</td>
+                                <td class="muted small">@message.Error</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<IncomingErpMessageDto>? _messages;
+    private IncomingMessageStatusDto? _filter;
+    private bool _loading;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _messages = await Api.GetIncomingMessagesAsync(_filter);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task FilterAsync(IncomingMessageStatusDto? status)
+    {
+        _filter = status;
+        await LoadAsync();
+    }
+}

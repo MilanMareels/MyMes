@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json.Serialization;
 using Asp.Versioning;
@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using MyMES.Abstractions.Security;
 using MyMES.Api;
+using MyMES.Api.BackgroundServices;
 using MyMES.Api.Endpoints;
 using MyMES.Api.ExceptionHandling;
 using MyMES.Api.Extensions;
@@ -85,6 +86,7 @@ try
 
     // Migrations and identity seeding run as part of host start-up, before the first request.
     builder.Services.AddHostedService<StartupInitialiser>();
+    builder.Services.AddHostedService<ErpIngestionWorker>();
 
     builder.Services.Configure<JsonOptions>(options =>
     {
@@ -173,6 +175,7 @@ try
     api.MapAuthEndpoints();
     api.MapUserEndpoints();
     api.MapPlatformEndpoints();
+    api.MapIntegrationEndpoints();
 
     // Every module and plugin contributes its own routes under the same versioned group.
     foreach (var endpointModule in app.Services.GetServices<IEndpointModule>())

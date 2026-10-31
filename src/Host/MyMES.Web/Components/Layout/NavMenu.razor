@@ -1,4 +1,4 @@
-﻿@inject ILocalizationCatalog Text
+@inject ILocalizationCatalog Text
 
 <div class="brand">
     <div class="brand-mark">M</div>
@@ -19,6 +19,7 @@
         <Authorized>
             <div class="nav-divider"></div>
             <NavLink href="users">@Text["nav.users"]</NavLink>
+            <NavLink href="incoming-messages">@Text["nav.erp"]</NavLink>
         </Authorized>
     </AuthorizeView>
 </nav>
