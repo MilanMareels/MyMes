@@ -1,7 +1,7 @@
 # MyMES
 
 A Manufacturing Execution System built as a modular monolith on .NET 10, with Clean Architecture
-boundaries that are enforced by tests rather than by convention.
+boundaries that are enforced by the layering rules rather than by convention.
 
 This is a **foundation**: enough real functionality to prove the architecture works end to end,
 and nothing speculative on top of it. Machines, production orders and product revisions are fully
@@ -20,7 +20,6 @@ reacts to the rest of the system without depending on it.
 | Data | Entity Framework Core 10, Microsoft SQL Server 2022 |
 | Identity | ASP.NET Core Identity, JWT bearer tokens |
 | Logging | Serilog, structured |
-| Tests | xUnit, Shouldly, NetArchTest |
 | Containers | Docker, Docker Compose |
 
 Package versions are managed centrally in `Directory.Packages.props`; no project carries a
@@ -60,8 +59,7 @@ version of its own.
                                    └────────────────────────┘
 ```
 
-Three boundaries matter more than the rest, and all three are asserted in
-`tests/MyMES.ArchitectureTests`:
+Three boundaries matter more than the rest:
 
 1. **The domain references nothing.** Not EF Core, not ASP.NET, not another MyMES project.
 2. **The Blazor application cannot reach the database.** It references `MyMES.Contracts` and
@@ -112,10 +110,6 @@ MyMES/
 ├── extensions/
 │   └── MyMES.Extensions.Sample    worked example of a third-party extension
 ├── plugins/                       drop-in location for packaged plugins
-├── tests/
-│   ├── MyMES.UnitTests            domain rules, use cases, mapping, extensibility
-│   ├── MyMES.IntegrationTests     the real API over HTTP
-│   └── MyMES.ArchitectureTests    the dependency rules, as assertions
 ├── deployment/
 │   ├── docker/                    one Dockerfile per host
 │   ├── compose/
@@ -289,22 +283,6 @@ migration can ever be applied to that database. More in
 
 ---
 
-## Tests
-
-```bash
-dotnet test
-```
-
-Three suites, all runnable without a database:
-
-| Suite | What it covers |
-|---|---|
-| `MyMES.UnitTests` | Domain invariants and state machines, use cases on an in-memory context, exhaustive enum mapping, the three extension mechanisms |
-| `MyMES.IntegrationTests` | The real API over HTTP: sign-in, authorisation, module routing, the `ProblemDetails` contract |
-| `MyMES.ArchitectureTests` | The dependency rules above, as assertions that fail the build |
-
----
-
 ## Authentication and authorisation
 
 - The API issues JWT bearer tokens from `POST /api/v1/auth/login`.
@@ -343,7 +321,6 @@ Three suites, all runnable without a database:
    ```
 
 3. Add the project to `MyMES.Api` and list its assembly in the `AddMyMesModules` call.
-4. The architecture tests will hold you to the rules. That is the point.
 
 ## How to replace a service implementation
 
@@ -378,7 +355,7 @@ in-process plugins can and cannot be trusted with.
 |---|---|
 | `Guid.CreateVersion7()` for keys | Globally unique like any GUID, but time-ordered, so rows append to the clustered index instead of fragmenting it. |
 | Application layer references EF Core | `IApplicationDbContext` exposes `DbSet<T>`. EF Core already is a unit of work with a queryable repository; wrapping it in a generic repository removes capability and adds a layer. The **domain** stays framework-free, which is the boundary that protects the rules. |
-| Contracts duplicate the domain enums | The public API must be able to stay stable while the domain evolves. The mapping is explicit and exhaustively tested, so drift fails the build. |
+| Contracts duplicate the domain enums | The public API must be able to stay stable while the domain evolves. The mapping is explicit, so drift is caught early. |
 | One DbContext, two schemas | `mes` and `identity`. One migration history, one transaction when a business change and a user change must happen together. Per-module contexts are the next step if a module ever moves to its own database. |
 | Over-production is accepted | The floor really does make extra pieces. Refusing the booking pushes operators into not reporting at all. |
 | Permissions in the token | The API authorises from the token alone, with no database round trip per request. The cost is that a permission change takes effect when the token expires. |
