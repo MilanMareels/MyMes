@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MyMES.Domain.Integrations;
 using MyMES.Domain.Machines;
 using MyMES.Domain.Personnel;
 using MyMES.Domain.Production;
@@ -32,6 +33,8 @@ public interface IApplicationDbContext
     DbSet<ProductVersion> ProductVersions { get; }
 
     DbSet<Employee> Employees { get; }
+
+    DbSet<IncomingErpMessage> IncomingErpMessages { get; }
 
     /// <summary>
     /// Commits the tracked changes. The implementation also stamps audit columns and hands any

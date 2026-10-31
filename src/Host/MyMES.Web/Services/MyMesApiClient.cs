@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using MyMES.Contracts.Common;
 using MyMES.Contracts.Dashboard;
 using MyMES.Contracts.Identity;
+using MyMES.Contracts.Integrations;
 using MyMES.Contracts.Machines;
 using MyMES.Contracts.Production;
 using MyMES.Contracts.Products;
@@ -214,6 +215,20 @@ public sealed class MyMesApiClient(HttpClient http)
 
     public Task ActivateUserAsync(string id, CancellationToken cancellationToken = default) =>
         PostAsync<object, object>($"api/v1/users/{id}/activate", new { }, cancellationToken);
+
+    // -- ERP integration ---------------------------------------------------------
+
+    public Task<List<IncomingErpMessageDto>?> GetIncomingMessagesAsync(
+        IncomingMessageStatusDto? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = "api/v1/integrations/erp/messages";
+        if (status is not null)
+        {
+            query += $"?status={status}";
+        }
+        return GetAsync<List<IncomingErpMessageDto>>(query, cancellationToken);
+    }
 
     // -- Plumbing ---------------------------------------------------------------------
 

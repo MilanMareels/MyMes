@@ -1,6 +1,8 @@
+using MyMES.Contracts.Integrations;
 using MyMES.Contracts.Machines;
 using MyMES.Contracts.Production;
 using MyMES.Contracts.Products;
+using MyMES.Domain.Integrations;
 using MyMES.Domain.Machines;
 using MyMES.Domain.Production;
 using MyMES.Domain.Products;
@@ -140,4 +142,20 @@ public static class DomainToContractMappings
         product.IsActive,
         product.ReleasedVersion?.VersionNumber,
         product.Versions.Count);
+
+    public static IncomingMessageStatusDto ToDto(this IncomingMessageStatus status) => status switch
+    {
+        IncomingMessageStatus.Processed => IncomingMessageStatusDto.Processed,
+        IncomingMessageStatus.Failed => IncomingMessageStatusDto.Failed,
+        _ => IncomingMessageStatusDto.New
+    };
+
+    public static IncomingErpMessageDto ToDto(this IncomingErpMessage message) => new(
+        message.Id,
+        message.ExternalReference,
+        message.ProductCode,
+        message.Status.ToDto(),
+        message.Error,
+        message.ReceivedAtUtc,
+        message.ProcessedAtUtc);
 }

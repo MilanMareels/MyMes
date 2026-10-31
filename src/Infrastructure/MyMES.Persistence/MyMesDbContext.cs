@@ -5,6 +5,7 @@ using MyMES.Abstractions.Security;
 using MyMES.Abstractions.Time;
 using MyMES.Application.Abstractions;
 using MyMES.Domain.Common;
+using MyMES.Domain.Integrations;
 using MyMES.Domain.Machines;
 using MyMES.Domain.Personnel;
 using MyMES.Domain.Production;
@@ -50,6 +51,8 @@ public sealed class MyMesDbContext(
     public DbSet<ProductVersion> ProductVersions => Set<ProductVersion>();
 
     public DbSet<Employee> Employees => Set<Employee>();
+
+    public DbSet<IncomingErpMessage> IncomingErpMessages => Set<IncomingErpMessage>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
