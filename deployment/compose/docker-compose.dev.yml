@@ -1,0 +1,31 @@
+# Development overlay. Applied on top of the root compose file:
+#
+#   docker compose -f docker-compose.yml -f deployment/compose/docker-compose.dev.yml up -d --build
+#
+# Differences from the default stack: verbose logging, Swagger on, and SQL Server reachable from
+# the host so a developer can attach SSMS or Azure Data Studio to it.
+
+services:
+  sqlserver:
+    ports:
+      # Still loopback-only. Convenience does not extend to putting a database on the LAN.
+      - "127.0.0.1:1433:1433"
+
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Swagger__Enabled: "true"
+      Serilog__MinimumLevel__Default: Debug
+      Serilog__MinimumLevel__Override__Microsoft.EntityFrameworkCore.Database.Command: Information
+      Extensions__Sample__Enabled: "true"
+
+  web:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Serilog__MinimumLevel__Default: Debug
+
+  machineservice:
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      Serilog__MinimumLevel__Default: Debug
+      MachineService__PollIntervalSeconds: 5

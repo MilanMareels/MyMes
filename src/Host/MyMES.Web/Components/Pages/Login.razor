@@ -1,0 +1,117 @@
+﻿@page "/login"
+@layout EmptyLayout
+@attribute [AllowAnonymous]
+
+@* Deliberately *not* interactive. Writing the authentication cookie needs HttpContext, which a
+   circuit does not have, so this page runs as static server rendering and posts to itself. *@
+
+@inject MyMesApiClient Api
+@inject NavigationManager Navigation
+@inject ILogger<Login> Logger
+
+<PageTitle>Sign in â€” MyMES</PageTitle>
+
+<div class="login-shell">
+    <div class="login-card">
+        <div class="brand login-brand">
+            <div class="brand-mark">M</div>
+            <div class="brand-text">
+                <strong>MyMES</strong>
+                <span>Manufacturing Execution System</span>
+            </div>
+        </div>
+
+        <EditForm Model="Input" FormName="login" OnValidSubmit="SignInAsync" method="post">
+            <DataAnnotationsValidator />
+
+            @if (!string.IsNullOrWhiteSpace(_error))
+            {
+                <div class="alert error" role="alert">
+                    <div>@_error</div>
+                </div>
+            }
+
+            <div class="field">
+                <label for="userName">User name</label>
+                <InputText id="userName" @bind-Value="Input!.UserName" autocomplete="username" />
+                <ValidationMessage For="() => Input!.UserName" />
+            </div>
+
+            <div class="field">
+                <label for="password">Password</label>
+                <InputText id="password" type="password" @bind-Value="Input!.Password"
+                           autocomplete="current-password" />
+                <ValidationMessage For="() => Input!.Password" />
+            </div>
+
+            <button type="submit" class="btn primary block">Sign in</button>
+        </EditForm>
+
+        <p class="login-hint muted">
+            No account yet? The first administrator is created from configuration at start-up.
+            See <code>docs/development</code> in the repository.
+        </p>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    @* No initializer here: the form post assigns this property, and an initializer would be
+       overwritten with null on the round trip. It is created in OnInitialized instead. *@
+    [SupplyParameterFromForm] private LoginInput? Input { get; set; }
+
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    private string? _error;
+
+    protected override void OnInitialized() => Input ??= new LoginInput();
+
+    private async Task SignInAsync()
+    {
+        try
+        {
+            var login = await Api.LoginAsync(Input!.UserName, Input.Password, HttpContext.RequestAborted);
+
+            if (login is null)
+            {
+                // The API already distinguishes bad credentials from a lockout; the UI does not
+                // repeat the distinction, for the same reason the API keeps one message.
+                _error = "The user name or password is incorrect.";
+                return;
+            }
+
+            await WebSignIn.SignInAsync(HttpContext, login);
+
+            // Only ever return to a path on this site; an absolute URL here would be an open
+            // redirect a phishing link could abuse.
+            var target = !string.IsNullOrWhiteSpace(ReturnUrl)
+                         && Uri.IsWellFormedUriString(ReturnUrl, UriKind.Relative)
+                ? ReturnUrl
+                : "/";
+
+            Navigation.NavigateTo(target, forceLoad: true);
+        }
+        catch (ApiException ex)
+        {
+            Logger.LogWarning(ex, "Sign-in failed for {UserName}.", Input!.UserName);
+            _error = ex.Message;
+        }
+        catch (HttpRequestException ex)
+        {
+            Logger.LogError(ex, "The API could not be reached during sign-in.");
+            _error = "The API cannot be reached. Try again once it is running.";
+        }
+    }
+
+    private sealed class LoginInput
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Enter your user name.")]
+        public string UserName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Enter your password.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}
+
+

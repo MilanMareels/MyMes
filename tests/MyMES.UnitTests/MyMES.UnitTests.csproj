@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\extensions\MyMES.Extensions.Sample\MyMES.Extensions.Sample.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\MyMES.EventBus\MyMES.EventBus.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\MyMES.PluginSystem\MyMES.PluginSystem.csproj" />
+    <ProjectReference Include="..\..\src\Core\MyMES.Abstractions\MyMES.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Core\MyMES.Application\MyMES.Application.csproj" />
+    <ProjectReference Include="..\..\src\Core\MyMES.Contracts\MyMES.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Core\MyMES.Domain\MyMES.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Infrastructure\MyMES.Identity\MyMES.Identity.csproj" />
+    <ProjectReference Include="..\..\src\Modules\MyMES.Modules.Machines\MyMES.Modules.Machines.csproj" />
+    <ProjectReference Include="..\..\src\Modules\MyMES.Modules.Production\MyMES.Modules.Production.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
+

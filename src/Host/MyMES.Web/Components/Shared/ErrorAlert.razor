@@ -1,0 +1,23 @@
+@* The failure state. Shows what went wrong and offers the one action that can help. *@
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <div class="alert error" role="alert">
+        <div>
+            <strong>@Title</strong>
+            <div class="muted">@Message</div>
+        </div>
+        @if (OnRetry.HasDelegate)
+        {
+            <button type="button" class="btn ghost sm" @onclick="OnRetry">Try again</button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = "Something went wrong";
+
+    [Parameter] public string? Message { get; set; }
+
+    [Parameter] public EventCallback OnRetry { get; set; }
+}

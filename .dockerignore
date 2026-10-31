@@ -1,0 +1,17 @@
+# Keep the build context small and free of anything that must not reach an image.
+**/bin/
+**/obj/
+**/node_modules/
+**/.vs/
+**/.vscode/
+**/.idea/
+**/TestResults/
+.git/
+.github/
+.env
+*.user
+*.suo
+docs/
+tests/
+deployment/scripts/
+**/*.md

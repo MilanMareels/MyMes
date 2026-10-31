@@ -1,0 +1,18 @@
+@* The empty state. Distinct from loading and from failure: there is simply nothing to show. *@
+
+<div class="state-panel empty">
+    <strong>@Title</strong>
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <span class="muted">@Message</span>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Nothing to show";
+
+    [Parameter] public string? Message { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,28 @@
+@* One dashboard figure. Presentation only: the numbers are computed server-side. *@
+
+<div class="kpi @Tone">
+    <div class="kpi-label">@Label</div>
+    <div class="kpi-value">
+        @Value@if (!string.IsNullOrWhiteSpace(Unit))
+        {
+            <span class="kpi-unit">@Unit</span>
+        }
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Hint))
+    {
+        <div class="kpi-hint">@Hint</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public string Value { get; set; } = string.Empty;
+
+    [Parameter] public string? Unit { get; set; }
+
+    [Parameter] public string? Hint { get; set; }
+
+    /// <summary>One of <c>neutral</c>, <c>good</c>, <c>warn</c> or <c>bad</c>.</summary>
+    [Parameter] public string Tone { get; set; } = "neutral";
+}

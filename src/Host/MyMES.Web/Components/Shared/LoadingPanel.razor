@@ -1,0 +1,10 @@
+@* The loading state. Every page that fetches shows this rather than an empty screen. *@
+
+<div class="state-panel" role="status" aria-live="polite">
+    <span class="spinner" aria-hidden="true"></span>
+    <span>@Message…</span>
+</div>
+
+@code {
+    [Parameter] public string Message { get; set; } = "Loading";
+}

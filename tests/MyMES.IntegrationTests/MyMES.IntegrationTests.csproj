@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Core\MyMES.Abstractions\MyMES.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Core\MyMES.Application\MyMES.Application.csproj" />
+    <ProjectReference Include="..\..\src\Core\MyMES.Contracts\MyMES.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Core\MyMES.Domain\MyMES.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Host\MyMES.Api\MyMES.Api.csproj" />
+    <ProjectReference Include="..\..\src\Infrastructure\MyMES.Identity\MyMES.Identity.csproj" />
+    <ProjectReference Include="..\..\src\Infrastructure\MyMES.Persistence\MyMES.Persistence.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
+

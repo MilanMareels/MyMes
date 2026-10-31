@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\MyMES.EventBus\MyMES.EventBus.csproj" />
+    <ProjectReference Include="..\MyMES.Abstractions\MyMES.Abstractions.csproj" />
+    <ProjectReference Include="..\MyMES.Contracts\MyMES.Contracts.csproj" />
+    <ProjectReference Include="..\MyMES.Domain\MyMES.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

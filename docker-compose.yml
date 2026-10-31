@@ -1,0 +1,110 @@
+# MyMES stack: SQL Server, API, Blazor front end and the machine worker.
+#
+#   cp .env.example .env     (then fill in the secrets)
+#   docker compose up -d --build
+#
+# Secrets come from .env, which is git-ignored. Nothing in this file carries a password.
+
+name: mymes
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: mymes-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+      MSSQL_PID: Developer
+    # Bound to the loopback interface only. SQL Server is reachable from the other containers
+    # over the compose network; publishing it on 0.0.0.0 would expose the database to the LAN.
+    ports:
+      - "127.0.0.1:1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    networks:
+      - mymes
+    healthcheck:
+      # The API waits for this, so it has to mean "accepts queries", not "process started".
+      test:
+        - CMD-SHELL
+        - /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: deployment/docker/Dockerfile.api
+    container_name: mymes-api
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      # Containers reach each other by service name on the compose network.
+      ConnectionStrings__MyMes: "Server=sqlserver,1433;Database=${MSSQL_DATABASE:-MyMES};User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=True"
+      # Migrations are applied on start-up here because the stack is meant to come up with one
+      # command. For a real deployment turn this off and migrate as a release step.
+      Database__AutoMigrate: "true"
+      Jwt__Key: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY in .env}
+      Jwt__Issuer: ${JWT_ISSUER:-MyMES}
+      Jwt__Audience: ${JWT_AUDIENCE:-MyMES}
+      Identity__Bootstrap__AdministratorUserName: ${MYMES_ADMIN_USERNAME:-}
+      Identity__Bootstrap__AdministratorEmail: ${MYMES_ADMIN_EMAIL:-}
+      Identity__Bootstrap__AdministratorPassword: ${MYMES_ADMIN_PASSWORD:-}
+      Swagger__Enabled: ${SWAGGER_ENABLED:-true}
+      Cors__Origins__0: "http://localhost:${WEB_PORT:-5200}"
+    ports:
+      - "${API_PORT:-5100}:8080"
+    networks:
+      - mymes
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: deployment/docker/Dockerfile.web
+    container_name: mymes-web
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      # Internal address: the browser never uses this, the server-side circuit does.
+      Api__BaseUrl: "http://api:8080"
+    ports:
+      - "${WEB_PORT:-5200}:8080"
+    networks:
+      - mymes
+    restart: unless-stopped
+
+  machineservice:
+    build:
+      context: .
+      dockerfile: deployment/docker/Dockerfile.machineservice
+    container_name: mymes-machineservice
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      DOTNET_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      MachineService__ApiBaseUrl: "http://api:8080"
+      MachineService__PollIntervalSeconds: ${MACHINE_POLL_SECONDS:-10}
+      # Without a service account the worker polls and logs but reports nothing, which is a
+      # deliberately visible no-op rather than an anonymous write.
+      MachineService__UserName: ${MACHINE_SERVICE_USERNAME:-}
+      MachineService__Password: ${MACHINE_SERVICE_PASSWORD:-}
+    networks:
+      - mymes
+    restart: unless-stopped
+
+networks:
+  mymes:
+    driver: bridge
+
+volumes:
+  mssql-data:
+    driver: local

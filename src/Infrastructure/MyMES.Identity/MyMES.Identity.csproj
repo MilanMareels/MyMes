@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Authorization policies and the Identity hosting types live in the shared framework. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\MyMES.Abstractions\MyMES.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Core\MyMES.Domain\MyMES.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

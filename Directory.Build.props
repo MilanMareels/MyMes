@@ -1,0 +1,46 @@
+<Project>
+
+  <!--
+    Settings shared by every project in the solution. Package versions are managed centrally in
+    Directory.Packages.props, so individual projects reference packages without a version.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <Deterministic>true</Deterministic>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!--
+      CS1591: documentation is generated so XML docs on public abstractions flow into consumers,
+              but a missing comment is not an error. We document what helps and leave obvious
+              members alone.
+      CA1848: LoggerMessage source-generated delegates are a hot-path optimisation. MES logging
+              sits on I/O-bound request paths where the allocation is irrelevant, and the plain
+              ILogger extensions keep call sites readable. Revisit for any genuinely hot loop.
+      CA1873: the companion warning to CA1848. Our log arguments are already-materialised
+              properties, which the analyzer cannot prove is cheap. Same trade-off, same answer:
+              move the call site to a [LoggerMessage] partial if profiling ever says otherwise.
+    -->
+    <NoWarn>$(NoWarn);CS1591;CA1848;CA1873</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Product>MyMES</Product>
+    <Company>MyMES</Company>
+    <Authors>MyMES</Authors>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <!-- Test projects are never packed and do not need generated documentation. -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('Tests'))">
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AnalysisLevel>latest-minimum</AnalysisLevel>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,256 @@
+@page "/machines"
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+@inject MyMesApiClient Api
+
+<PageTitle>Machines — MyMES</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1>Machines</h1>
+        <p class="muted">The machine register and its current state</p>
+    </div>
+    <AuthorizeView Roles="Administrator,Maintenance">
+        <Authorized>
+            <button type="button" class="btn primary" @onclick="() => _creating = !_creating">
+                @(_creating ? "Cancel" : "Add machine")
+            </button>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<ErrorAlert Message="@_error" OnRetry="LoadAsync" />
+
+@if (_creating)
+{
+    <div class="panel">
+        <div class="panel-head"><h2>Register a machine</h2></div>
+        <div class="panel-body">
+            <EditForm Model="_newMachine" OnValidSubmit="CreateAsync" FormName="create-machine">
+                <DataAnnotationsValidator />
+                <div class="form-grid">
+                    <div class="field">
+                        <label>Machine code</label>
+                        <InputText @bind-Value="_newMachine.MachineCode" placeholder="CNC-01" />
+                        <ValidationMessage For="() => _newMachine.MachineCode" />
+                    </div>
+                    <div class="field">
+                        <label>Name</label>
+                        <InputText @bind-Value="_newMachine.Name" placeholder="CNC Lathe 1" />
+                        <ValidationMessage For="() => _newMachine.Name" />
+                    </div>
+                    <div class="field wide">
+                        <label>Description</label>
+                        <InputText @bind-Value="_newMachine.Description" />
+                    </div>
+                </div>
+                <button type="submit" class="btn primary" disabled="@_busy">Register</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div class="panel">
+    <div class="panel-head">
+        <div class="chips">
+            <button type="button" class="chip @(_statusFilter is null ? "on" : "")"
+                    @onclick="() => FilterAsync(null)">All</button>
+            @foreach (var status in Enum.GetValues<MachineStatusDto>())
+            {
+                <button type="button" class="chip @(_statusFilter == status ? "on" : "")"
+                        @onclick="() => FilterAsync(status)">@status</button>
+            }
+        </div>
+        <input type="search" placeholder="Search code or name…" value="@_search"
+               @oninput="OnSearchInput" />
+    </div>
+
+    <div class="panel-body flush">
+        @if (_loading)
+        {
+            <LoadingPanel Message="Loading machines" />
+        }
+        else if (_machines is null || _machines.Items.Count == 0)
+        {
+            <EmptyState Title="No machines"
+                        Message="Nothing matches this filter. Register a machine to get started." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>In state since</th>
+                            <th>Registered</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var machine in _machines.Items)
+                        {
+                            <tr>
+                                <td><strong>@machine.MachineCode</strong></td>
+                                <td>
+                                    @machine.Name
+                                    @if (!string.IsNullOrWhiteSpace(machine.Description))
+                                    {
+                                        <div class="muted small">@machine.Description</div>
+                                    }
+                                </td>
+                                <td><StatusBadge Machine="machine.Status" /></td>
+                                <td class="muted">@machine.StatusChangedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                                <td class="muted">@machine.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yy")</td>
+                                <td>
+                                    <AuthorizeView Roles="Administrator,Maintenance,Operator,Supervisor">
+                                        <Authorized>
+                                            @if (machine.Status != MachineStatusDto.Decommissioned)
+                                            {
+                                                <select disabled="@_busy"
+                                                        @onchange="e => ChangeStatusAsync(machine, e.Value?.ToString())">
+                                                    <option value="">Change status…</option>
+                                                    @foreach (var status in SelectableStatuses)
+                                                    {
+                                                        <option value="@status">@status</option>
+                                                    }
+                                                </select>
+                                            }
+                                        </Authorized>
+                                    </AuthorizeView>
+                                    <AuthorizeView Roles="Administrator,Maintenance">
+                                        <Authorized>
+                                            @if (machine.Status != MachineStatusDto.Decommissioned)
+                                            {
+                                                <button type="button" class="btn ghost sm" disabled="@_busy"
+                                                        @onclick="() => DecommissionAsync(machine)">
+                                                    Decommission
+                                                </button>
+                                            }
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly MachineStatusDto[] SelectableStatuses =
+    [
+        MachineStatusDto.Idle,
+        MachineStatusDto.Running,
+        MachineStatusDto.Faulted,
+        MachineStatusDto.Maintenance
+    ];
+
+    private PagedResult<MachineDto>? _machines;
+    private MachineStatusDto? _statusFilter;
+    private string? _search;
+    private string? _error;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _creating;
+
+    private CreateMachineRequest _newMachine = new();
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _machines = await Api.GetMachinesAsync(status: _statusFilter, search: _search);
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task FilterAsync(MachineStatusDto? status)
+    {
+        _statusFilter = status;
+        await LoadAsync();
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs args)
+    {
+        _search = args.Value?.ToString();
+        await LoadAsync();
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        try
+        {
+            await Api.CreateMachineAsync(_newMachine);
+            _newMachine = new CreateMachineRequest();
+            _creating = false;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ChangeStatusAsync(MachineDto machine, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || !Enum.TryParse<MachineStatusDto>(value, out var status))
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Api.ChangeMachineStatusAsync(machine.Id, status);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DecommissionAsync(MachineDto machine)
+    {
+        _busy = true;
+        try
+        {
+            await Api.DecommissionMachineAsync(machine.Id);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

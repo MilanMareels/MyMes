@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <UserSecretsId>mymes-web-2026</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\MyMES.Localization\MyMES.Localization.csproj" />
+    <ProjectReference Include="..\..\Core\MyMES.Abstractions\MyMES.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Core\MyMES.Contracts\MyMES.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,56 @@
+@* One badge for every status enum, so the colours never drift apart between screens. *@
+
+<span class="badge @CssClass">@Text</span>
+
+@code {
+    [Parameter] public MachineStatusDto? Machine { get; set; }
+
+    [Parameter] public ProductionOrderStatusDto? Order { get; set; }
+
+    [Parameter] public ProductVersionStatusDto? Version { get; set; }
+
+    private string CssClass => this switch
+    {
+        { Machine: { } m } => m switch
+        {
+            MachineStatusDto.Running => "ok",
+            MachineStatusDto.Idle => "idle",
+            MachineStatusDto.Faulted => "bad",
+            MachineStatusDto.Maintenance => "info",
+            MachineStatusDto.Decommissioned => "off",
+            _ => "idle"
+        },
+        { Order: { } o } => o switch
+        {
+            ProductionOrderStatusDto.InProgress => "ok",
+            ProductionOrderStatusDto.Released => "info",
+            ProductionOrderStatusDto.OnHold => "warn",
+            ProductionOrderStatusDto.Completed => "done",
+            ProductionOrderStatusDto.Cancelled => "off",
+            _ => "idle"
+        },
+        { Version: { } v } => v switch
+        {
+            ProductVersionStatusDto.Released => "ok",
+            ProductVersionStatusDto.Draft => "idle",
+            ProductVersionStatusDto.Obsolete => "off",
+            _ => "idle"
+        },
+        _ => "idle"
+    };
+
+    private string Text => this switch
+    {
+        { Machine: { } m } => Humanise(m.ToString()),
+        { Order: { } o } => Humanise(o.ToString()),
+        { Version: { } v } => Humanise(v.ToString()),
+        _ => "-"
+    };
+
+    /// <summary>"InProgress" reads better as "In progress".</summary>
+    private static string Humanise(string value)
+    {
+        var spaced = System.Text.RegularExpressions.Regex.Replace(value, "(?<!^)([A-Z])", " $1");
+        return string.Concat(char.ToUpperInvariant(spaced[0]), spaced[1..].ToLowerInvariant());
+    }
+}

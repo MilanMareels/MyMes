@@ -1,0 +1,62 @@
+# Build context is the repository root, because the shared build files
+# (Directory.Build.props, Directory.Packages.props, global.json) have to be present.
+#   docker build -f deployment/docker/Dockerfile.api -t mymes-api .
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403 AS build
+WORKDIR /src
+
+# Project files first. They change far less often than source, so the restore layer survives
+# most rebuilds and the slowest step runs only when a dependency actually moves.
+COPY global.json Directory.Build.props Directory.Packages.props ./
+COPY src/Core/MyMES.Abstractions/MyMES.Abstractions.csproj src/Core/MyMES.Abstractions/
+COPY src/Core/MyMES.Domain/MyMES.Domain.csproj src/Core/MyMES.Domain/
+COPY src/Core/MyMES.Contracts/MyMES.Contracts.csproj src/Core/MyMES.Contracts/
+COPY src/Core/MyMES.Application/MyMES.Application.csproj src/Core/MyMES.Application/
+COPY src/BuildingBlocks/MyMES.EventBus/MyMES.EventBus.csproj src/BuildingBlocks/MyMES.EventBus/
+COPY src/BuildingBlocks/MyMES.PluginSystem/MyMES.PluginSystem.csproj src/BuildingBlocks/MyMES.PluginSystem/
+COPY src/BuildingBlocks/MyMES.Localization/MyMES.Localization.csproj src/BuildingBlocks/MyMES.Localization/
+COPY src/Infrastructure/MyMES.Identity/MyMES.Identity.csproj src/Infrastructure/MyMES.Identity/
+COPY src/Infrastructure/MyMES.Persistence/MyMES.Persistence.csproj src/Infrastructure/MyMES.Persistence/
+COPY src/Infrastructure/MyMES.Infrastructure/MyMES.Infrastructure.csproj src/Infrastructure/MyMES.Infrastructure/
+COPY src/Infrastructure/MyMES.Messaging/MyMES.Messaging.csproj src/Infrastructure/MyMES.Messaging/
+COPY src/Modules/MyMES.Modules.Machines/MyMES.Modules.Machines.csproj src/Modules/MyMES.Modules.Machines/
+COPY src/Modules/MyMES.Modules.Production/MyMES.Modules.Production.csproj src/Modules/MyMES.Modules.Production/
+COPY src/Modules/MyMES.Modules.Quality/MyMES.Modules.Quality.csproj src/Modules/MyMES.Modules.Quality/
+COPY src/Modules/MyMES.Modules.Inventory/MyMES.Modules.Inventory.csproj src/Modules/MyMES.Modules.Inventory/
+COPY extensions/MyMES.Extensions.Sample/MyMES.Extensions.Sample.csproj extensions/MyMES.Extensions.Sample/
+COPY src/Host/MyMES.Api/MyMES.Api.csproj src/Host/MyMES.Api/
+
+RUN dotnet restore src/Host/MyMES.Api/MyMES.Api.csproj
+
+COPY src/ src/
+COPY extensions/ extensions/
+
+RUN dotnet publish src/Host/MyMES.Api/MyMES.Api.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+
+# curl is needed by the compose health check; the aspnet image does not ship it.
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Runs as the image's non-root "app" user rather than root. A compromised process then cannot
+# write to the file system or bind a privileged port.
+USER app
+
+ENV ASPNETCORE_HTTP_PORTS=8080 \
+    ASPNETCORE_ENVIRONMENT=Production \
+    DOTNET_gcServer=1
+
+EXPOSE 8080
+
+COPY --from=build --chown=app:app /app/publish .
+
+HEALTHCHECK --interval=20s --timeout=5s --start-period=40s --retries=5 \
+    CMD curl --fail http://localhost:8080/health/live || exit 1
+
+ENTRYPOINT ["dotnet", "MyMES.Api.dll"]

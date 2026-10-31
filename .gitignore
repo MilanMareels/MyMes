@@ -1,0 +1,42 @@
+## Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+artifacts/
+TestResults/
+*.binlog
+
+## Secrets. Never commit these.
+.env
+*.pfx
+*.p12
+appsettings.*.Local.json
+secrets.json
+
+## IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+## OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## NuGet
+*.nupkg
+*.snupkg
+packages/
+.nuget/
+
+## Rider / ReSharper
+_ReSharper*/
+
+## Logs
+logs/
+*.log

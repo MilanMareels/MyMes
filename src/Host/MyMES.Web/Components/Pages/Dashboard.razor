@@ -1,0 +1,125 @@
+@page "/"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@implements IDisposable
+
+@inject MyMesApiClient Api
+
+<PageTitle>Dashboard — MyMES</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1>Dashboard</h1>
+        <p class="muted">Plant status at a glance</p>
+    </div>
+    <div class="row">
+        @if (_summary is not null)
+        {
+            <span class="muted small">updated @_summary.GeneratedAtUtc.ToLocalTime().ToString("HH:mm:ss")</span>
+        }
+        <button type="button" class="btn ghost sm" disabled="@_loading" @onclick="() => LoadAsync()">Refresh</button>
+    </div>
+</div>
+
+<ErrorAlert Message="@_error" OnRetry="() => LoadAsync()" />
+
+@if (_loading && _summary is null)
+{
+    <LoadingPanel Message="Loading plant figures" />
+}
+else if (_summary is null)
+{
+    <EmptyState Title="No figures available" Message="The API returned nothing for this plant." />
+}
+else
+{
+    <div class="kpi-grid">
+        <KpiCard Label="Total machines"
+                 Value="@_summary.TotalMachines.ToString()"
+                 Tone="neutral" />
+
+        <KpiCard Label="Running machines"
+                 Value="@($"{_summary.RunningMachines}/{_summary.TotalMachines}")"
+                 Tone="@(_summary.RunningMachines > 0 ? "good" : "warn")"
+                 Hint="@(_summary.FaultedMachines > 0 ? $"{_summary.FaultedMachines} faulted" : null)" />
+
+        <KpiCard Label="Active production orders"
+                 Value="@_summary.ActiveProductionOrders.ToString()"
+                 Tone="neutral" />
+
+        <KpiCard Label="Produced today"
+                 Value="@_summary.ProducedQuantityToday.ToString("N0")"
+                 Unit="units"
+                 Tone="good"
+                 Hint="@($"{_summary.CompletedOrdersToday} order(s) completed")" />
+    </div>
+
+    <div class="panel">
+        <div class="panel-head">
+            <h2>Plant</h2>
+        </div>
+        <div class="panel-body">
+            <dl class="kv">
+                <dt>Active products</dt>
+                <dd>@_summary.ActiveProducts</dd>
+                <dt>Faulted machines</dt>
+                <dd class="@(_summary.FaultedMachines > 0 ? "tone-bad" : "")">@_summary.FaultedMachines</dd>
+                <dt>Figures generated</dt>
+                <dd>@_summary.GeneratedAtUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm:ss")</dd>
+            </dl>
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardSummaryDto? _summary;
+    private string? _error;
+    private bool _loading;
+    private Timer? _timer;
+    private readonly CancellationTokenSource _cts = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+
+        // A dashboard that never refreshes is a screenshot. Thirty seconds is frequent enough to
+        // be useful and infrequent enough not to hammer the API from every open browser.
+        _timer = new Timer(_ => _ = LoadAsync(), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private async Task LoadAsync()
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        _loading = true;
+        try
+        {
+            _summary = await Api.GetDashboardAsync(_cts.Token);
+            _error = null;
+        }
+        catch (OperationCanceledException)
+        {
+            // The circuit is going away.
+        }
+        catch (Exception ex)
+        {
+            // The last good snapshot stays on screen; the banner explains why it is not moving.
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+        _timer?.Dispose();
+    }
+}

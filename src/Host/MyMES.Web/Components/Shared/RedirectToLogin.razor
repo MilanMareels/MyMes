@@ -1,0 +1,15 @@
+@* Sends an unauthenticated visitor to the sign-in page, remembering where they were heading. *@
+
+@inject NavigationManager Navigation
+
+@code {
+    protected override void OnInitialized()
+    {
+        var returnUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var query = string.IsNullOrWhiteSpace(returnUrl)
+            ? string.Empty
+            : $"?returnUrl={Uri.EscapeDataString("/" + returnUrl)}";
+
+        Navigation.NavigateTo($"/login{query}", forceLoad: true);
+    }
+}

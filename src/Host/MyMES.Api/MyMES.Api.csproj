@@ -1,0 +1,45 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <UserSecretsId>mymes-api-2026</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Http" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
+    <PackageReference Include="AspNetCore.HealthChecks.SqlServer" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\extensions\MyMES.Extensions.Sample\MyMES.Extensions.Sample.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\MyMES.EventBus\MyMES.EventBus.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\MyMES.PluginSystem\MyMES.PluginSystem.csproj" />
+    <ProjectReference Include="..\..\Core\MyMES.Abstractions\MyMES.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Core\MyMES.Application\MyMES.Application.csproj" />
+    <ProjectReference Include="..\..\Core\MyMES.Contracts\MyMES.Contracts.csproj" />
+    <ProjectReference Include="..\..\Core\MyMES.Domain\MyMES.Domain.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\MyMES.Identity\MyMES.Identity.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\MyMES.Infrastructure\MyMES.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\MyMES.Messaging\MyMES.Messaging.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\MyMES.Persistence\MyMES.Persistence.csproj" />
+    <ProjectReference Include="..\..\Modules\MyMES.Modules.Inventory\MyMES.Modules.Inventory.csproj" />
+    <ProjectReference Include="..\..\Modules\MyMES.Modules.Machines\MyMES.Modules.Machines.csproj" />
+    <ProjectReference Include="..\..\Modules\MyMES.Modules.Production\MyMES.Modules.Production.csproj" />
+    <ProjectReference Include="..\..\Modules\MyMES.Modules.Quality\MyMES.Modules.Quality.csproj" />
+  </ItemGroup>
+
+</Project>
+

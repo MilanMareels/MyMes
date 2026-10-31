@@ -1,0 +1,24 @@
+﻿@inject ILocalizationCatalog Text
+
+<div class="brand">
+    <div class="brand-mark">M</div>
+    <div class="brand-text">
+        <strong>MyMES</strong>
+        <span>Manufacturing</span>
+    </div>
+</div>
+
+<nav class="nav">
+    <NavLink href="" Match="NavLinkMatch.All">@Text["nav.dashboard"]</NavLink>
+    <NavLink href="machines">@Text["nav.machines"]</NavLink>
+    <NavLink href="production-orders">@Text["nav.production"]</NavLink>
+    <NavLink href="products">@Text["nav.products"]</NavLink>
+
+    @* The link is hidden without the role, but the API is what actually refuses the data. *@
+    <AuthorizeView Roles="Administrator">
+        <Authorized>
+            <div class="nav-divider"></div>
+            <NavLink href="users">@Text["nav.users"]</NavLink>
+        </Authorized>
+    </AuthorizeView>
+</nav>

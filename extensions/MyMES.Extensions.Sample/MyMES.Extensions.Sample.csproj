@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\BuildingBlocks\MyMES.PluginSystem\MyMES.PluginSystem.csproj" />
+    <ProjectReference Include="..\..\src\Core\MyMES.Abstractions\MyMES.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Core\MyMES.Application\MyMES.Application.csproj" />
+    <ProjectReference Include="..\..\src\Core\MyMES.Contracts\MyMES.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Core\MyMES.Domain\MyMES.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Needed to register minimal-API endpoints from a class library. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>
+

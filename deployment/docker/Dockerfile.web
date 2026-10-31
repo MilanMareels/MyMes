@@ -1,0 +1,51 @@
+# Build context is the repository root.
+#   docker build -f deployment/docker/Dockerfile.web -t mymes-web .
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403 AS build
+WORKDIR /src
+
+COPY global.json Directory.Build.props Directory.Packages.props ./
+COPY src/Core/MyMES.Abstractions/MyMES.Abstractions.csproj src/Core/MyMES.Abstractions/
+COPY src/Core/MyMES.Contracts/MyMES.Contracts.csproj src/Core/MyMES.Contracts/
+COPY src/BuildingBlocks/MyMES.Localization/MyMES.Localization.csproj src/BuildingBlocks/MyMES.Localization/
+COPY src/Host/MyMES.Web/MyMES.Web.csproj src/Host/MyMES.Web/
+# Blazor: de .razor-bestanden moeten aanwezig zijn tijdens restore, anders wordt het impliciete
+# pakket Microsoft.AspNetCore.App.Internal.Assets niet hersteld en geeft de gepubliceerde app 404
+# op /_framework/blazor.web.js (dotnet/aspnetcore#69341).
+COPY src/Host/MyMES.Web/Components/ src/Host/MyMES.Web/Components/
+
+RUN dotnet restore src/Host/MyMES.Web/MyMES.Web.csproj
+
+# Only the projects the web application actually references are copied. It has no access to the
+# domain, the application layer or persistence, and the image reflects that.
+COPY src/Core/MyMES.Abstractions/ src/Core/MyMES.Abstractions/
+COPY src/Core/MyMES.Contracts/ src/Core/MyMES.Contracts/
+COPY src/BuildingBlocks/MyMES.Localization/ src/BuildingBlocks/MyMES.Localization/
+COPY src/Host/MyMES.Web/ src/Host/MyMES.Web/
+
+RUN dotnet publish src/Host/MyMES.Web/MyMES.Web.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y curl \
+    && rm -rf /var/lib/apt/lists/*
+
+USER app
+
+ENV ASPNETCORE_HTTP_PORTS=8080 \
+    ASPNETCORE_ENVIRONMENT=Production \
+    DOTNET_gcServer=1
+
+EXPOSE 8080
+
+COPY --from=build --chown=app:app /app/publish .
+
+HEALTHCHECK --interval=20s --timeout=5s --start-period=30s --retries=5 \
+    CMD curl --fail http://localhost:8080/health/live || exit 1
+
+ENTRYPOINT ["dotnet", "MyMES.Web.dll"]

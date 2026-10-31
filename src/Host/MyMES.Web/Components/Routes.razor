@@ -1,0 +1,28 @@
+﻿@* AuthorizeRouteView is what keeps an unauthenticated visitor out of every page: the API enforces
+   authorisation for real, and this stops the UI from rendering a screen it cannot fill. *@
+
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
+            <NotAuthorized>
+                @if (context.User.Identity?.IsAuthenticated != true)
+                {
+                    <RedirectToLogin />
+                }
+                else
+                {
+                    <AccessDeniedPanel />
+                }
+            </NotAuthorized>
+            <Authorizing>
+                <LoadingPanel Message="Checking your access" />
+            </Authorizing>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(MainLayout)">
+            <EmptyState Title="Page not found" Message="The address you followed does not exist." />
+        </LayoutView>
+    </NotFound>
+</Router>

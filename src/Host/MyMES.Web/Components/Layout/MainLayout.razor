@@ -1,0 +1,47 @@
+﻿@inherits LayoutComponentBase
+
+<div class="app">
+    <aside class="sidebar">
+        <NavMenu />
+    </aside>
+
+    <div class="main">
+        <header class="topbar">
+            <span class="topbar-title">Manufacturing Execution System</span>
+
+            <div class="topbar-right">
+                <AuthorizeView>
+                    <Authorized>
+                        <span class="user">
+                            <span class="user-name">@DisplayNameFor(context)</span>
+                            <span class="user-roles">@string.Join(", ", RolesFor(context))</span>
+                        </span>
+                        @* Sign-out posts to a real endpoint because clearing the cookie needs
+                           HttpContext, which an interactive component does not have. *@
+                        <form method="post" action="/logout">
+                            <AntiforgeryToken />
+                            <button type="submit" class="btn ghost sm">Sign out</button>
+                        </form>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a class="btn ghost sm" href="/login">Sign in</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </header>
+
+        <main class="content">
+            @Body
+        </main>
+    </div>
+</div>
+
+@code {
+    private static string DisplayNameFor(AuthenticationState state) =>
+        state.User.FindFirst("display_name")?.Value
+        ?? state.User.Identity?.Name
+        ?? "Signed in";
+
+    private static IEnumerable<string> RolesFor(AuthenticationState state) =>
+        state.User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value);
+}

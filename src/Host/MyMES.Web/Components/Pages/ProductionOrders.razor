@@ -1,0 +1,278 @@
+@page "/production-orders"
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+@inject MyMesApiClient Api
+
+<PageTitle>Production orders — MyMES</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1>Production orders</h1>
+        <p class="muted">What the plant is making, and how far along it is</p>
+    </div>
+    <AuthorizeView Roles="Administrator,Planner,Supervisor">
+        <Authorized>
+            <button type="button" class="btn primary" @onclick="() => _creating = !_creating">
+                @(_creating ? "Cancel" : "New order")
+            </button>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<ErrorAlert Message="@_error" OnRetry="LoadAsync" />
+
+@if (_creating)
+{
+    <div class="panel">
+        <div class="panel-head"><h2>Create a production order</h2></div>
+        <div class="panel-body">
+            <EditForm Model="_newOrder" OnValidSubmit="CreateAsync" FormName="create-order">
+                <DataAnnotationsValidator />
+                <div class="form-grid">
+                    <div class="field">
+                        <label>Order number</label>
+                        <InputText @bind-Value="_newOrder.OrderNumber" placeholder="WO-2026-0001" />
+                        <ValidationMessage For="() => _newOrder.OrderNumber" />
+                    </div>
+                    <div class="field">
+                        <label>Product code</label>
+                        <InputText @bind-Value="_newOrder.ProductCode" placeholder="FG-PUMP-100" />
+                        <ValidationMessage For="() => _newOrder.ProductCode" />
+                    </div>
+                    <div class="field">
+                        <label>Planned quantity</label>
+                        <InputNumber @bind-Value="_newOrder.PlannedQuantity" />
+                        <ValidationMessage For="() => _newOrder.PlannedQuantity" />
+                    </div>
+                    <div class="field">
+                        <label>Planned start</label>
+                        <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="_plannedStart" />
+                    </div>
+                    <div class="field">
+                        <label>Planned end</label>
+                        <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="_plannedEnd" />
+                    </div>
+                </div>
+                <button type="submit" class="btn primary" disabled="@_busy">Create as draft</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div class="panel">
+    <div class="panel-head">
+        <div class="chips">
+            <button type="button" class="chip @(_statusFilter is null ? "on" : "")"
+                    @onclick="() => FilterAsync(null)">All</button>
+            @foreach (var status in Enum.GetValues<ProductionOrderStatusDto>())
+            {
+                <button type="button" class="chip @(_statusFilter == status ? "on" : "")"
+                        @onclick="() => FilterAsync(status)">@status</button>
+            }
+        </div>
+        <input type="search" placeholder="Search order or product…" value="@_search" @oninput="OnSearchInput" />
+    </div>
+
+    <div class="panel-body flush">
+        @if (_loading)
+        {
+            <LoadingPanel Message="Loading orders" />
+        }
+        else if (_orders is null || _orders.Items.Count == 0)
+        {
+            <EmptyState Title="No production orders" Message="Nothing matches this filter." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Product</th>
+                            <th>Status</th>
+                            <th class="num">Planned</th>
+                            <th class="num">Produced</th>
+                            <th style="width:160px;">Progress</th>
+                            <th>Planned window</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in _orders.Items)
+                        {
+                            <tr>
+                                <td><strong>@order.OrderNumber</strong></td>
+                                <td>
+                                    @order.ProductCode
+                                    @if (!string.IsNullOrWhiteSpace(order.ProductVersionNumber))
+                                    {
+                                        <div class="muted small">revision @order.ProductVersionNumber</div>
+                                    }
+                                </td>
+                                <td><StatusBadge Order="order.Status" /></td>
+                                <td class="num">@order.PlannedQuantity.ToString("N0")</td>
+                                <td class="num">@order.ProducedQuantity.ToString("N0")</td>
+                                <td>
+                                    <div class="progress">
+                                        <span style="width:@order.CompletionPercentage.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%"></span>
+                                    </div>
+                                    <span class="muted small">@order.CompletionPercentage.ToString("0.#")%</span>
+                                </td>
+                                <td class="muted small">
+                                    @order.PlannedStartUtc.ToLocalTime().ToString("dd/MM HH:mm")
+                                    &rarr;
+                                    @order.PlannedEndUtc.ToLocalTime().ToString("dd/MM HH:mm")
+                                </td>
+                                <td>
+                                    <AuthorizeView Roles="Administrator,Planner,Supervisor,Operator">
+                                        <Authorized>
+                                            <div class="row tight">
+                                                @foreach (var action in ActionsFor(order.Status))
+                                                {
+                                                    <button type="button" class="btn ghost sm" disabled="@_busy"
+                                                            @onclick="() => TransitionAsync(order, action)">
+                                                        @action
+                                                    </button>
+                                                }
+                                                @if (order.Status == ProductionOrderStatusDto.InProgress)
+                                                {
+                                                    <button type="button" class="btn ghost sm" disabled="@_busy"
+                                                            @onclick="() => ReportAsync(order)">
+                                                        report 1
+                                                    </button>
+                                                }
+                                            </div>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private PagedResult<ProductionOrderDto>? _orders;
+    private ProductionOrderStatusDto? _statusFilter;
+    private string? _search;
+    private string? _error;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _creating;
+
+    private CreateProductionOrderRequest _newOrder = new() { PlannedQuantity = 100 };
+    private DateTime _plannedStart = DateTime.Now.Date.AddHours(8);
+    private DateTime _plannedEnd = DateTime.Now.Date.AddDays(1).AddHours(16);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    /// <summary>
+    /// Which transitions the UI offers for a status. The domain is the authority; this only keeps
+    /// the screen from presenting buttons that would certainly be refused.
+    /// </summary>
+    private static string[] ActionsFor(ProductionOrderStatusDto status) => status switch
+    {
+        ProductionOrderStatusDto.Draft => ["release"],
+        ProductionOrderStatusDto.Released => ["start", "cancel"],
+        ProductionOrderStatusDto.InProgress => ["hold", "complete"],
+        ProductionOrderStatusDto.OnHold => ["start", "complete", "cancel"],
+        _ => []
+    };
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _orders = await Api.GetProductionOrdersAsync(status: _statusFilter, search: _search);
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task FilterAsync(ProductionOrderStatusDto? status)
+    {
+        _statusFilter = status;
+        await LoadAsync();
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs args)
+    {
+        _search = args.Value?.ToString();
+        await LoadAsync();
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        try
+        {
+            _newOrder = _newOrder with
+            {
+                PlannedStartUtc = DateTime.SpecifyKind(_plannedStart, DateTimeKind.Local).ToUniversalTime(),
+                PlannedEndUtc = DateTime.SpecifyKind(_plannedEnd, DateTimeKind.Local).ToUniversalTime()
+            };
+
+            await Api.CreateProductionOrderAsync(_newOrder);
+            _newOrder = new CreateProductionOrderRequest { PlannedQuantity = 100 };
+            _creating = false;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task TransitionAsync(ProductionOrderDto order, string action)
+    {
+        _busy = true;
+        try
+        {
+            await Api.TransitionOrderAsync(order.Id, action);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ReportAsync(ProductionOrderDto order)
+    {
+        _busy = true;
+        try
+        {
+            await Api.ReportProductionAsync(order.Id, 1m);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

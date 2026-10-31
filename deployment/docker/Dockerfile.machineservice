@@ -1,0 +1,42 @@
+# Build context is the repository root.
+#   docker build -f deployment/docker/Dockerfile.machineservice -t mymes-machineservice .
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403 AS build
+WORKDIR /src
+
+COPY global.json Directory.Build.props Directory.Packages.props ./
+COPY src/Core/MyMES.Abstractions/MyMES.Abstractions.csproj src/Core/MyMES.Abstractions/
+COPY src/Core/MyMES.Contracts/MyMES.Contracts.csproj src/Core/MyMES.Contracts/
+COPY src/BuildingBlocks/MyMES.EventBus/MyMES.EventBus.csproj src/BuildingBlocks/MyMES.EventBus/
+COPY src/Infrastructure/MyMES.Messaging/MyMES.Messaging.csproj src/Infrastructure/MyMES.Messaging/
+COPY src/Host/MyMES.MachineService/MyMES.MachineService.csproj src/Host/MyMES.MachineService/
+
+RUN dotnet restore src/Host/MyMES.MachineService/MyMES.MachineService.csproj
+
+COPY src/Core/MyMES.Abstractions/ src/Core/MyMES.Abstractions/
+COPY src/Core/MyMES.Contracts/ src/Core/MyMES.Contracts/
+COPY src/BuildingBlocks/MyMES.EventBus/ src/BuildingBlocks/MyMES.EventBus/
+COPY src/Infrastructure/MyMES.Messaging/ src/Infrastructure/MyMES.Messaging/
+COPY src/Host/MyMES.MachineService/ src/Host/MyMES.MachineService/
+
+RUN dotnet publish src/Host/MyMES.MachineService/MyMES.MachineService.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# The worker has no HTTP surface, but Serilog.AspNetCore pulls in the Microsoft.AspNetCore.App
+# shared framework, so it still needs the ASP.NET Core runtime image.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+
+USER app
+
+ENV DOTNET_ENVIRONMENT=Production \
+    DOTNET_gcServer=1
+
+COPY --from=build --chown=app:app /app/publish .
+
+# No HEALTHCHECK: the worker exposes no endpoint to poll. Its health is reported in the log and,
+# in a real deployment, through whatever metrics sink is attached.
+
+ENTRYPOINT ["dotnet", "MyMES.MachineService.dll"]

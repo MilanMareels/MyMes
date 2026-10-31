@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Scrutor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\MyMES.EventBus\MyMES.EventBus.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\MyMES.PluginSystem\MyMES.PluginSystem.csproj" />
+    <ProjectReference Include="..\..\Core\MyMES.Abstractions\MyMES.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Core\MyMES.Application\MyMES.Application.csproj" />
+    <ProjectReference Include="..\MyMES.Identity\MyMES.Identity.csproj" />
+    <ProjectReference Include="..\MyMES.Messaging\MyMES.Messaging.csproj" />
+    <ProjectReference Include="..\MyMES.Persistence\MyMES.Persistence.csproj" />
+  </ItemGroup>
+
+</Project>

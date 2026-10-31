@@ -1,0 +1,368 @@
+@page "/products"
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+@inject MyMesApiClient Api
+
+<PageTitle>Products — MyMES</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1>Products</h1>
+        <p class="muted">The catalogue and the revision each order is built against</p>
+    </div>
+    <AuthorizeView Roles="Administrator,Planner">
+        <Authorized>
+            <button type="button" class="btn primary" @onclick="() => _creating = !_creating">
+                @(_creating ? "Cancel" : "New product")
+            </button>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<ErrorAlert Message="@_error" OnRetry="LoadAsync" />
+
+@if (_creating)
+{
+    <div class="panel">
+        <div class="panel-head"><h2>Create a product</h2></div>
+        <div class="panel-body">
+            <EditForm Model="_newProduct" OnValidSubmit="CreateAsync" FormName="create-product">
+                <DataAnnotationsValidator />
+                <div class="form-grid">
+                    <div class="field">
+                        <label>Product code</label>
+                        <InputText @bind-Value="_newProduct.ProductCode" placeholder="FG-PUMP-100" />
+                        <ValidationMessage For="() => _newProduct.ProductCode" />
+                    </div>
+                    <div class="field">
+                        <label>Name</label>
+                        <InputText @bind-Value="_newProduct.Name" placeholder="Hydraulic pump HP-100" />
+                        <ValidationMessage For="() => _newProduct.Name" />
+                    </div>
+                    <div class="field">
+                        <label>Unit of measure</label>
+                        <InputText @bind-Value="_newProduct.UnitOfMeasure" />
+                    </div>
+                    <div class="field">
+                        <label>First revision <span class="muted">(optional)</span></label>
+                        <InputText @bind-Value="_newProduct.InitialVersionNumber" placeholder="A" />
+                    </div>
+                    <div class="field wide">
+                        <label>Description</label>
+                        <InputText @bind-Value="_newProduct.Description" />
+                    </div>
+                </div>
+                <button type="submit" class="btn primary" disabled="@_busy">Create</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div class="panel">
+    <div class="panel-head">
+        <div class="chips">
+            <button type="button" class="chip @(_activeOnly == null ? "on" : "")"
+                    @onclick="() => FilterAsync(null)">All</button>
+            <button type="button" class="chip @(_activeOnly == true ? "on" : "")"
+                    @onclick="() => FilterAsync(true)">Active only</button>
+        </div>
+        <input type="search" placeholder="Search code or name…" value="@_search" @oninput="OnSearchInput" />
+    </div>
+
+    <div class="panel-body flush">
+        @if (_loading)
+        {
+            <LoadingPanel Message="Loading products" />
+        }
+        else if (_products is null || _products.Items.Count == 0)
+        {
+            <EmptyState Title="No products" Message="Nothing matches this filter." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>Unit</th>
+                            <th>Released revision</th>
+                            <th class="num">Revisions</th>
+                            <th>Active</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var product in _products.Items)
+                        {
+                            <tr>
+                                <td><strong>@product.ProductCode</strong></td>
+                                <td>@product.Name</td>
+                                <td class="muted">@product.UnitOfMeasure</td>
+                                <td>
+                                    @if (product.ReleasedVersionNumber is { Length: > 0 } released)
+                                    {
+                                        <span class="badge ok">@released</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="muted small">none released</span>
+                                    }
+                                </td>
+                                <td class="num">@product.VersionCount</td>
+                                <td>
+                                    <span class="badge @(product.IsActive ? "ok" : "off")">
+                                        @(product.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn ghost sm"
+                                            @onclick="() => OpenAsync(product.Id)">
+                                        Revisions
+                                    </button>
+                                    @if (product.IsActive)
+                                    {
+                                        <AuthorizeView Roles="Administrator,Planner">
+                                            <Authorized>
+                                                <button type="button" class="btn ghost sm" disabled="@_busy"
+                                                        @onclick="() => DeactivateAsync(product)">
+                                                    Deactivate
+                                                </button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@if (_selected is not null)
+{
+    <div class="panel">
+        <div class="panel-head">
+            <h2>@_selected.ProductCode — revisions</h2>
+            <button type="button" class="btn ghost sm" @onclick="() => _selected = null">Close</button>
+        </div>
+        <div class="panel-body">
+            <AuthorizeView Roles="Administrator,Planner">
+                <Authorized>
+                    <div class="row" style="margin-bottom:14px;">
+                        <input type="text" placeholder="Revision number, for example B"
+                               @bind="_newVersionNumber" style="max-width:220px;" />
+                        <button type="button" class="btn" disabled="@(_busy || string.IsNullOrWhiteSpace(_newVersionNumber))"
+                                @onclick="AddVersionAsync">
+                            Add draft revision
+                        </button>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+
+            @if (_selected.Versions.Count == 0)
+            {
+                <EmptyState Title="No revisions yet"
+                            Message="Add a draft revision before raising orders against this product." />
+            }
+            else
+            {
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>Revision</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Released</th>
+                            <th>Notes</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var version in _selected.Versions)
+                        {
+                            <tr>
+                                <td><strong>@version.VersionNumber</strong></td>
+                                <td><StatusBadge Version="version.Status" /></td>
+                                <td class="muted small">@version.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yy HH:mm")</td>
+                                <td class="muted small">
+                                    @(version.ReleasedAtUtc?.ToLocalTime().ToString("dd/MM/yy HH:mm") ?? "-")
+                                </td>
+                                <td class="muted small">@version.Notes</td>
+                                <td>
+                                    @if (version.Status == ProductVersionStatusDto.Draft)
+                                    {
+                                        <AuthorizeView Roles="Administrator,Planner">
+                                            <Authorized>
+                                                <button type="button" class="btn ghost sm" disabled="@_busy"
+                                                        @onclick="() => ReleaseVersionAsync(version.Id)">
+                                                    Release
+                                                </button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <p class="muted small" style="margin-top:12px;">
+                    Releasing a revision retires whichever revision was released before it:
+                    a product has at most one current build standard.
+                </p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private PagedResult<ProductSummaryDto>? _products;
+    private ProductDto? _selected;
+    private bool? _activeOnly;
+    private string? _search;
+    private string? _error;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _creating;
+
+    private CreateProductRequest _newProduct = new();
+    private string? _newVersionNumber;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _products = await Api.GetProductsAsync(activeOnly: _activeOnly, search: _search);
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task FilterAsync(bool? activeOnly)
+    {
+        _activeOnly = activeOnly;
+        await LoadAsync();
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs args)
+    {
+        _search = args.Value?.ToString();
+        await LoadAsync();
+    }
+
+    private async Task OpenAsync(Guid id)
+    {
+        try
+        {
+            _selected = await Api.GetProductAsync(id);
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        try
+        {
+            await Api.CreateProductAsync(_newProduct);
+            _newProduct = new CreateProductRequest();
+            _creating = false;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task AddVersionAsync()
+    {
+        if (_selected is null || string.IsNullOrWhiteSpace(_newVersionNumber))
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Api.AddProductVersionAsync(
+                _selected.Id,
+                new AddProductVersionRequest { VersionNumber = _newVersionNumber });
+
+            _newVersionNumber = null;
+            await OpenAsync(_selected.Id);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ReleaseVersionAsync(Guid versionId)
+    {
+        if (_selected is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            _selected = await Api.ReleaseProductVersionAsync(_selected.Id, versionId);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeactivateAsync(ProductSummaryDto product)
+    {
+        _busy = true;
+        try
+        {
+            await Api.DeactivateProductAsync(product.Id);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

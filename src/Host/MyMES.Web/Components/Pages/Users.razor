@@ -1,0 +1,249 @@
+@page "/users"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Administrator")]
+
+@inject MyMesApiClient Api
+
+<PageTitle>Users — MyMES</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1>Users</h1>
+        <p class="muted">Accounts and the roles they hold</p>
+    </div>
+    <button type="button" class="btn primary" @onclick="() => _creating = !_creating">
+        @(_creating ? "Cancel" : "New user")
+    </button>
+</div>
+
+<ErrorAlert Message="@_error" OnRetry="LoadAsync" />
+
+@if (_creating)
+{
+    <div class="panel">
+        <div class="panel-head"><h2>Create a user</h2></div>
+        <div class="panel-body">
+            <EditForm Model="_newUser" OnValidSubmit="CreateAsync" FormName="create-user">
+                <DataAnnotationsValidator />
+                <div class="form-grid">
+                    <div class="field">
+                        <label>User name</label>
+                        <InputText @bind-Value="_newUser.UserName" autocomplete="off" />
+                        <ValidationMessage For="() => _newUser.UserName" />
+                    </div>
+                    <div class="field">
+                        <label>Email</label>
+                        <InputText @bind-Value="_newUser.Email" autocomplete="off" />
+                        <ValidationMessage For="() => _newUser.Email" />
+                    </div>
+                    <div class="field">
+                        <label>Password <span class="muted">(at least 12 characters)</span></label>
+                        <InputText type="password" @bind-Value="_newUser.Password" autocomplete="new-password" />
+                        <ValidationMessage For="() => _newUser.Password" />
+                    </div>
+                    <div class="field">
+                        <label>Employee number <span class="muted">(optional)</span></label>
+                        <InputText @bind-Value="_newUser.EmployeeNumber" />
+                    </div>
+                    <div class="field">
+                        <label>First name</label>
+                        <InputText @bind-Value="_newUser.FirstName" />
+                    </div>
+                    <div class="field">
+                        <label>Last name</label>
+                        <InputText @bind-Value="_newUser.LastName" />
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Roles</label>
+                    <div class="chips">
+                        @foreach (var role in AllRoles)
+                        {
+                            <button type="button" class="chip @(_selectedRoles.Contains(role) ? "on" : "")"
+                                    @onclick="() => ToggleRole(role)">
+                                @role
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <button type="submit" class="btn primary" disabled="@_busy">Create</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div class="panel">
+    <div class="panel-head">
+        <h2>Accounts</h2>
+        @if (_users is not null)
+        {
+            <span class="muted small">@_users.Count account(s)</span>
+        }
+    </div>
+    <div class="panel-body flush">
+        @if (_loading)
+        {
+            <LoadingPanel Message="Loading users" />
+        }
+        else if (_users is null || _users.Count == 0)
+        {
+            <EmptyState Title="No users" Message="Only the bootstrap administrator exists so far." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>User name</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Employee</th>
+                            <th>Roles</th>
+                            <th>State</th>
+                            <th>Created</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in _users)
+                        {
+                            <tr>
+                                <td><strong>@user.UserName</strong></td>
+                                <td>@user.DisplayName</td>
+                                <td class="muted">@user.Email</td>
+                                <td class="muted">@(user.EmployeeNumber ?? "-")</td>
+                                <td>
+                                    <div class="chips">
+                                        @foreach (var role in user.Roles)
+                                        {
+                                            <span class="badge info">@role</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (user.IsLockedOut)
+                                    {
+                                        <span class="badge warn">Locked out</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge @(user.IsActive ? "ok" : "off")">
+                                            @(user.IsActive ? "Active" : "Inactive")
+                                        </span>
+                                    }
+                                </td>
+                                <td class="muted small">@user.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yy")</td>
+                                <td>
+                                    @if (user.IsActive)
+                                    {
+                                        <button type="button" class="btn ghost sm" disabled="@_busy"
+                                                @onclick="() => SetActiveAsync(user, false)">Deactivate</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn ghost sm" disabled="@_busy"
+                                                @onclick="() => SetActiveAsync(user, true)">Activate</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly string[] AllRoles =
+        ["Administrator", "Supervisor", "Operator", "Maintenance", "Quality", "Planner"];
+
+    private List<UserDto>? _users;
+    private string? _error;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _creating;
+
+    private CreateUserRequest _newUser = new();
+    private readonly HashSet<string> _selectedRoles = new(StringComparer.Ordinal);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _users = await Api.GetUsersAsync();
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ToggleRole(string role)
+    {
+        if (!_selectedRoles.Add(role))
+        {
+            _selectedRoles.Remove(role);
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        try
+        {
+            _newUser = _newUser with { Roles = [.. _selectedRoles] };
+            await Api.CreateUserAsync(_newUser);
+
+            _newUser = new CreateUserRequest();
+            _selectedRoles.Clear();
+            _creating = false;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SetActiveAsync(UserDto user, bool active)
+    {
+        _busy = true;
+        try
+        {
+            if (active)
+            {
+                await Api.ActivateUserAsync(user.Id);
+            }
+            else
+            {
+                await Api.DeactivateUserAsync(user.Id);
+            }
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
