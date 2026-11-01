@@ -4,8 +4,8 @@ MyMES is built to be extended without forking it. A customer or integrator can a
 machine drivers, workflow steps and endpoints, and can replace or wrap services the platform
 ships with.
 
-`extensions/MyMES.Extensions.Sample` is a working example that builds and is covered by the test
-suite. Start there.
+`extensions/MyMES.Extensions.Sample` is a working example that builds and runs as part of the
+solution. Start there.
 
 ---
 

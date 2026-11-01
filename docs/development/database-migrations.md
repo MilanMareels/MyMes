@@ -1,29 +1,20 @@
 # Database migrations
 
-EF Core migrations, through the .NET CLI. The migration files are committed to the repository and
+EF Core migrations are managed with Visual Studio's **Package Manager Console** (Tools → NuGet
+Package Manager → Package Manager Console). The migration files are committed to the repository and
 are the only source of truth for the schema.
 
-## Setup
+Set the two dropdowns in the console before running any command:
 
-The EF tool is pinned in the tool manifest, so everyone gets the same version:
-
-```bash
-dotnet tool restore
-```
-
-## The two projects
-
-Every command names two projects, and the distinction matters:
-
-| Flag | Project | Why |
+| Dropdown | Project | Why |
 |---|---|---|
-| `--project` | `src/Infrastructure/MyMES.Persistence` | Where the `DbContext` and the migrations live |
-| `--startup-project` | `src/Host/MyMES.Api` | Where the configuration and the service registrations live |
+| Default project | `MyMES.Persistence` | Where the `DbContext` and the migrations live |
+| Startup project | `MyMES.Api` | Where the configuration and the service registrations live |
 
 ## Creating a migration
 
-```bash
-dotnet ef migrations add AddMaintenanceSchedule --project src/Infrastructure/MyMES.Persistence --startup-project src/Host/MyMES.Api
+```powershell
+Add-Migration AddMaintenanceSchedule
 ```
 
 The files land in `src/Infrastructure/MyMES.Persistence/Migrations`. Read the generated `Up` and
@@ -38,45 +29,48 @@ laptop with nothing running.
 
 Locally:
 
-```bash
-dotnet ef database update --project src/Infrastructure/MyMES.Persistence --startup-project src/Host/MyMES.Api
+```powershell
+Update-Database
 ```
 
-Against a different server, without editing any file:
+In Development this is usually unnecessary: the API applies pending migrations itself on start-up
+(`Database:AutoMigrate` is `true`).
 
-```bash
-MYMES_MIGRATIONS_CONNECTION="Server=staging;Database=MyMES;User Id=deploy;Password=..." dotnet ef database update --project src/Infrastructure/MyMES.Persistence --startup-project src/Host/MyMES.Api
-```
-
-On Windows PowerShell:
+Against a different server, without editing any file, set the connection string first:
 
 ```powershell
-$env:MYMES_MIGRATIONS_CONNECTION = "Server=staging;Database=MyMES;User Id=deploy;Password=..."; dotnet ef database update --project src/Infrastructure/MyMES.Persistence --startup-project src/Host/MyMES.Api
+$env:MYMES_MIGRATIONS_CONNECTION = "Server=staging;Database=MyMES;User Id=deploy;Password=..."
+Update-Database
 ```
+
+`DesignTimeDbContextFactory` resolves the connection string in this order: the
+`MYMES_MIGRATIONS_CONNECTION` environment variable, then the API's user-secrets, then a local SQL
+Server fallback. So on a developer machine `Update-Database` targets the same database the running
+app uses, with no extra setup.
 
 ## Producing a script instead
 
 For any environment where a person has to approve the change:
 
-```bash
-dotnet ef migrations script --idempotent --project src/Infrastructure/MyMES.Persistence --startup-project src/Host/MyMES.Api --output migrate.sql
+```powershell
+Script-Migration -Idempotent -Output migrate.sql
 ```
 
-`--idempotent` guards every step with a check against `__EFMigrationsHistory`, so the script is
+`-Idempotent` guards every step with a check against `__EFMigrationsHistory`, so the script is
 safe to run against a database at any migration level.
 
 ## Undoing
 
 Remove the last migration, if it has **not** been applied or shared:
 
-```bash
-dotnet ef migrations remove --project src/Infrastructure/MyMES.Persistence --startup-project src/Host/MyMES.Api
+```powershell
+Remove-Migration
 ```
 
 Roll a database back to an earlier migration:
 
-```bash
-dotnet ef database update <PreviousMigrationName> --project src/Infrastructure/MyMES.Persistence --startup-project src/Host/MyMES.Api
+```powershell
+Update-Database <PreviousMigrationName>
 ```
 
 Never delete a migration that has been applied anywhere but your own machine. Write a new one
@@ -110,7 +104,7 @@ The initial migration creates both schemas:
 
 | Schema | Tables |
 |---|---|
-| `mes` | `Machines`, `Products`, `ProductVersions`, `ProductionOrders`, `Employees`, `__EFMigrationsHistory` |
+| `mes` | `Machines`, `Products`, `ProductVersions`, `ProductionOrders`, `Employees`, `IncomingErpMessages`, `__EFMigrationsHistory` |
 | `identity` | `Users`, `Roles`, `UserRoles`, `UserClaims`, `UserLogins`, `UserTokens`, `RoleClaims` |
 
 Verified against SQL Server, not only generated:

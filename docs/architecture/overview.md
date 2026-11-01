@@ -11,7 +11,7 @@ other. Splitting that across services at the start buys network calls, eventual 
 distributed debugging in exchange for independence nobody needs yet.
 
 The monolith keeps the transaction, and the module boundaries keep the option. Every rule that a
-service boundary would enforce physically is enforced here by a test instead:
+service boundary would enforce physically is enforced here by the project structure instead:
 
 - modules do not reference each other
 - modules reach data through the application layer, never a `DbContext`
@@ -30,8 +30,8 @@ nothing** — not EF Core, not ASP.NET, not another MyMES project.
 
 Business rules live here, not in services. `ProductionOrder` decides whether it may start;
 `Product` decides that only one revision can be released at a time. A service that reached into
-these objects to set a status would be the beginning of an anemic model, and the architecture
-tests do not prevent that — code review does. The aggregates are deliberately shaped so the
+these objects to set a status would be the beginning of an anemic model, and code review is
+what prevents that. The aggregates are deliberately shaped so the
 wrong thing is hard to write: setters are private and every transition is a named method.
 
 ### MyMES.Contracts
@@ -40,7 +40,7 @@ The public wire format: DTOs and their own enums. No dependency on the domain.
 
 The duplication is the point. `MachineStatus` and `MachineStatusDto` have the same members today,
 and the day the domain gains an internal state that clients should not see, the contract does not
-move. `MappingTests` iterates both enums in both directions, so the two cannot drift silently.
+move. The mapping between the two is explicit, so a drift is a conscious change in one file.
 
 ### MyMES.Application
 
@@ -116,13 +116,13 @@ on the server's locale is a log that cannot be compared across machines.
 ### Real-time
 
 `IRealtimeNotifier` lives in `MyMES.Messaging` and knows nothing about SignalR. The API supplies
-the SignalR implementation; the worker and the test suite get a no-op. That is the same "replace
+the SignalR implementation; the worker gets a no-op. That is the same "replace
 a default implementation" seam extensions use.
 
 ### Time
 
 Nothing reads `DateTime.UtcNow` directly except `SystemDateTimeProvider`. Everything else takes
-`IDateTimeProvider`, which is what lets the domain tests pin a clock and assert on timestamps.
+`IDateTimeProvider`, so time can be pinned and asserted on.
 
 ## Known gaps
 
