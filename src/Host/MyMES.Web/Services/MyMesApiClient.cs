@@ -210,6 +210,9 @@ public sealed class MyMesApiClient(HttpClient http)
     public Task<ProductDto?> DeactivateProductAsync(Guid id, CancellationToken cancellationToken = default) =>
         PostAsync<object, ProductDto>($"api/v1/products/{id}/deactivate", new { }, cancellationToken);
 
+    public Task<ProductDto?> ActivateProductAsync(Guid id, CancellationToken cancellationToken = default) =>
+      PostAsync<object, ProductDto>($"api/v1/products/{id}/activate", new { }, cancellationToken);
+
     public Task DeactivateUserAsync(string id, CancellationToken cancellationToken = default) =>
         PostAsync<object, object>($"api/v1/users/{id}/deactivate", new { }, cancellationToken);
 

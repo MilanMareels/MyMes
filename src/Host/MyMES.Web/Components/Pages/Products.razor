@@ -122,6 +122,17 @@
                                             @onclick="() => OpenAsync(product.Id)">
                                         Revisions
                                     </button>
+                                    @if (!product.IsActive)
+                                    {
+                                        <AuthorizeView Roles="Administrator,Planner">
+                                            <Authorized>
+                                                <button type="button" class="btn ghost sm" disabled="@_busy"
+                                                        @onclick="() => ActivateAsync(product)">
+                                                    Activate
+                                                </button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                    }
                                     @if (product.IsActive)
                                     {
                                         <AuthorizeView Roles="Administrator,Planner">
@@ -354,6 +365,24 @@
         try
         {
             await Api.DeactivateProductAsync(product.Id);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ActivateAsync(ProductSummaryDto product)
+    {
+        _busy = true;
+        try
+        {
+            await Api.ActivateProductAsync(product.Id);
             await LoadAsync();
         }
         catch (Exception ex)

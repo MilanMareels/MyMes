@@ -25,13 +25,7 @@ internal static class ProductEndpoints
             .MapGroup("/products")
             .WithTags("Products");
 
-        group.MapGet("/", async (
-                IProductService products,
-                int? page,
-                int? pageSize,
-                bool? activeOnly,
-                string? search,
-                CancellationToken cancellationToken) =>
+        group.MapGet("/", async (IProductService products, int? page, int? pageSize, bool? activeOnly, string? search, CancellationToken cancellationToken) =>
             {
                 var request = new PageRequest { Page = page ?? 1, PageSize = pageSize ?? 25 };
                 return Results.Ok(await products.GetAsync(request, activeOnly, search, cancellationToken));
@@ -41,46 +35,29 @@ internal static class ProductEndpoints
             .Produces<PagedResult<ProductSummaryDto>>()
             .RequireAuthorization(MesPermissions.ProductsRead);
 
-        group.MapGet("/{id:guid}", async (
-                Guid id,
-                IProductService products,
-                CancellationToken cancellationToken) =>
-                (await products.GetByIdAsync(id, cancellationToken)).ToOk())
+        group.MapGet("/{id:guid}", async (Guid id, IProductService products, CancellationToken cancellationToken) => (await products.GetByIdAsync(id, cancellationToken)).ToOk())
             .WithName("GetProductById")
             .WithSummary("Returns a product with its full revision history.")
             .Produces<ProductDto>()
             .ProducesProblem(StatusCodes.Status404NotFound)
             .RequireAuthorization(MesPermissions.ProductsRead);
 
-        group.MapGet("/by-code/{productCode}", async (
-                string productCode,
-                IProductService products,
-                CancellationToken cancellationToken) =>
-                (await products.GetByCodeAsync(productCode, cancellationToken)).ToOk())
+        group.MapGet("/by-code/{productCode}", async (string productCode, IProductService products, CancellationToken cancellationToken) => (await products.GetByCodeAsync(productCode, cancellationToken)).ToOk())
             .WithName("GetProductByCode")
             .WithSummary("Looks a product up by its business key.")
             .Produces<ProductDto>()
             .ProducesProblem(StatusCodes.Status404NotFound)
             .RequireAuthorization(MesPermissions.ProductsRead);
 
-        group.MapPost("/", async (
-                CreateProductRequest request,
-                IProductService products,
-                CancellationToken cancellationToken) =>
-                (await products.CreateAsync(request, cancellationToken))
-                    .ToCreated(p => $"/api/v1/products/{p.Id}"))
+        group.MapPost("/", async (CreateProductRequest request, IProductService products, CancellationToken cancellationToken) => (await products.CreateAsync(request, cancellationToken))
+            .ToCreated(p => $"/api/v1/products/{p.Id}"))
             .WithName("CreateProduct")
             .WithSummary("Creates a product, optionally with its first draft revision.")
             .Produces<ProductDto>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .RequireAuthorization(MesPermissions.ProductsWrite);
 
-        group.MapPut("/{id:guid}", async (
-                Guid id,
-                UpdateProductRequest request,
-                IProductService products,
-                CancellationToken cancellationToken) =>
-                (await products.UpdateAsync(id, request, cancellationToken)).ToOk())
+        group.MapPut("/{id:guid}", async (Guid id,UpdateProductRequest request,IProductService products,CancellationToken cancellationToken) => (await products.UpdateAsync(id, request, cancellationToken)).ToOk())
             .WithName("UpdateProduct")
             .WithSummary("Updates a product's descriptive fields.")
             .Produces<ProductDto>()
@@ -128,13 +105,16 @@ internal static class ProductEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .RequireAuthorization(MesPermissions.ProductsRelease);
 
-        group.MapPost("/{id:guid}/deactivate", async (
-                Guid id,
-                IProductService products,
-                CancellationToken cancellationToken) =>
-                (await products.DeactivateAsync(id, cancellationToken)).ToOk())
+        group.MapPost("/{id:guid}/deactivate", async ( Guid id, IProductService products, CancellationToken cancellationToken) => (await products.DeactivateAsync(id, cancellationToken)).ToOk())
             .WithName("DeactivateProduct")
             .WithSummary("Deactivates a product and retires its released revision.")
+            .Produces<ProductDto>()
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .RequireAuthorization(MesPermissions.ProductsWrite);
+
+        group.MapPost("/{id:guid}/activate", async (Guid id, IProductService products, CancellationToken cancellationToken) => (await products.ActivateAsync(id, cancellationToken)).ToOk())
+            .WithName("ActivateProduct")
+            .WithSummary("Activates a product and activates its released revision.")
             .Produces<ProductDto>()
             .ProducesProblem(StatusCodes.Status404NotFound)
             .RequireAuthorization(MesPermissions.ProductsWrite);

@@ -187,6 +187,9 @@ public sealed class ProductService(
     public Task<Result<ProductDto>> DeactivateAsync(Guid id, CancellationToken cancellationToken = default) =>
         MutateAsync(id, (product, now) => product.Deactivate(now), cancellationToken);
 
+    public Task<Result<ProductDto>> ActivateAsync(Guid id, CancellationToken cancellationToken = default) =>
+       MutateAsync(id, (product, now) => product.Activate(now), cancellationToken);
+
     private async Task<Result<ProductDto>> MutateAsync(
         Guid productId,
         Action<Product, DateTime> change,

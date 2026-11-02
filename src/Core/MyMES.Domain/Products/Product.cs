@@ -175,9 +175,7 @@ public sealed class Product : AuditableEntity
     public void ObsoleteVersion(Guid versionId, DateTime utcNow)
     {
         var version = _versions.SingleOrDefault(v => v.Id == versionId)
-            ?? throw new DomainException(
-                "product_version.not_found",
-                $"Product {ProductCode} has no revision {versionId}.");
+            ?? throw new DomainException("product_version.not_found", $"Product {ProductCode} has no revision {versionId}.");
 
         version.MarkObsolete(utcNow);
     }
@@ -197,7 +195,22 @@ public sealed class Product : AuditableEntity
         ReleasedVersion?.MarkObsolete(utcNow);
     }
 
-    public void Reactivate() => IsActive = true;
+    public void Activate(DateTime utcNow)
+    {
+        if (IsActive)
+        {
+            return;
+        }
+
+        IsActive = true;
+
+        var versionToRestore = _versions
+        .Where(v => v.ReleasedAtUtc.HasValue)
+        .OrderByDescending(v => v.ObsoletedAtUtc ?? v.ReleasedAtUtc)
+        .FirstOrDefault();
+
+        versionToRestore?.Release(utcNow);
+    }
 }
 
 /// <summary>
