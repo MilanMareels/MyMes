@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace MyMES.Contracts.Products;
 
@@ -82,7 +82,7 @@ public sealed record UpdateProductRequest
 }
 
 /// <summary>Adds a draft revision to an existing product.</summary>
-public sealed record AddProductVersionRequest
+public sealed record CreateProductVersionRequest
 {
     [Required]
     [StringLength(32, MinimumLength = 1)]

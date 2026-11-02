@@ -67,7 +67,7 @@ internal sealed class ProductLoggingDecorator(IProductService inner,ILogger<Prod
 
     public Task<Result<ProductVersionDto>> AddVersionAsync(
         Guid productId,
-        AddProductVersionRequest request,
+        CreateProductVersionRequest request,
         CancellationToken cancellationToken = default) =>
         inner.AddVersionAsync(productId, request, cancellationToken);
 

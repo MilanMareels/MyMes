@@ -64,13 +64,8 @@ internal static class ProductEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .RequireAuthorization(MesPermissions.ProductsWrite);
 
-        group.MapPost("/{id:guid}/versions", async (
-                Guid id,
-                AddProductVersionRequest request,
-                IProductService products,
-                CancellationToken cancellationToken) =>
-                (await products.AddVersionAsync(id, request, cancellationToken))
-                    .ToCreated(v => $"/api/v1/products/{id}/versions/{v.Id}"))
+        group.MapPost("/{id:guid}/versions", async (Guid id, CreateProductVersionRequest request, IProductService products, CancellationToken cancellationToken) => (await products.AddVersionAsync(id, request, cancellationToken))
+            .ToCreated(v => $"/api/v1/products/{id}/versions/{v.Id}"))
             .WithName("AddProductVersion")
             .WithSummary("Adds a draft revision to a product.")
             .Produces<ProductVersionDto>(StatusCodes.Status201Created)
@@ -93,12 +88,8 @@ internal static class ProductEndpoints
             .ProducesProblem(StatusCodes.Status409Conflict)
             .RequireAuthorization(MesPermissions.ProductsRelease);
 
-        group.MapPost("/{id:guid}/versions/{versionId:guid}/obsolete", async (
-                Guid id,
-                Guid versionId,
-                IProductService products,
-                CancellationToken cancellationToken) =>
-                (await products.ObsoleteVersionAsync(id, versionId, cancellationToken)).ToOk())
+        group.MapPost("/{id:guid}/versions/{versionId:guid}/obsolete", async (Guid id, Guid versionId, IProductService products, CancellationToken cancellationToken) =>
+            (await products.ObsoleteVersionAsync(id, versionId, cancellationToken)).ToOk())
             .WithName("ObsoleteProductVersion")
             .WithSummary("Withdraws a revision without replacing it.")
             .Produces<ProductDto>()

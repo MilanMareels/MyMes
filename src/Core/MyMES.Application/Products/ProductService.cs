@@ -141,7 +141,7 @@ public sealed class ProductService(
 
     public async Task<Result<ProductVersionDto>> AddVersionAsync(
         Guid productId,
-        AddProductVersionRequest request,
+        CreateProductVersionRequest request,
         CancellationToken cancellationToken = default)
     {
         var product = await LoadAsync(productId, tracking: true, cancellationToken).ConfigureAwait(false);

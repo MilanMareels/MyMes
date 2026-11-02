@@ -182,9 +182,9 @@ public sealed class MyMesApiClient(HttpClient http)
 
     public Task<ProductVersionDto?> AddProductVersionAsync(
         Guid productId,
-        AddProductVersionRequest request,
+        CreateProductVersionRequest request,
         CancellationToken cancellationToken = default) =>
-        PostAsync<AddProductVersionRequest, ProductVersionDto>(
+        PostAsync<CreateProductVersionRequest, ProductVersionDto>(
             $"api/v1/products/{productId}/versions", request, cancellationToken);
 
     public Task<ProductDto?> ReleaseProductVersionAsync(
@@ -193,6 +193,13 @@ public sealed class MyMesApiClient(HttpClient http)
         CancellationToken cancellationToken = default) =>
         PostAsync<object, ProductDto>(
             $"api/v1/products/{productId}/versions/{versionId}/release", new { }, cancellationToken);
+
+    public Task<ProductDto?> ObsoleteProductVersionAsync(
+        Guid productId,
+        Guid versionId,
+        CancellationToken cancellationToken = default) =>
+        PostAsync<object, ProductDto>(
+            $"api/v1/products/{productId}/versions/{versionId}/obsolete", new { }, cancellationToken);
 
     // -- Users ---------------------------------------------------------------------
 

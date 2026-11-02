@@ -26,7 +26,7 @@ public interface IProductService
 
     Task<Result<ProductVersionDto>> AddVersionAsync(
         Guid productId,
-        AddProductVersionRequest request,
+        CreateProductVersionRequest request,
         CancellationToken cancellationToken = default);
 
     /// <summary>Promotes a draft revision to released, retiring whichever revision was current.</summary>

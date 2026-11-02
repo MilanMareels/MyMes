@@ -4,7 +4,7 @@
 
 @inject MyMesApiClient Api
 
-<PageTitle>Products — MyMES</PageTitle>
+<PageTitle>Products - MyMES</PageTitle>
 
 <div class="page-head">
     <div>
@@ -45,7 +45,7 @@
                         <InputText @bind-Value="_newProduct.UnitOfMeasure" />
                     </div>
                     <div class="field">
-                        <label>First revision <span class="muted">(optional)</span></label>
+                        <label>First version <span class="muted">(optional)</span></label>
                         <InputText @bind-Value="_newProduct.InitialVersionNumber" placeholder="A" />
                     </div>
                     <div class="field wide">
@@ -88,10 +88,10 @@
                             <th>Code</th>
                             <th>Name</th>
                             <th>Unit</th>
-                            <th>Released revision</th>
-                            <th class="num">Revisions</th>
+                            <th>Released version</th>
+                            <th class="num">Versions</th>
                             <th>Active</th>
-                            <th></th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -120,7 +120,7 @@
                                 <td>
                                     <button type="button" class="btn ghost sm"
                                             @onclick="() => OpenAsync(product.Id)">
-                                        Revisions
+                                        Versions
                                     </button>
                                     @if (!product.IsActive)
                                     {
@@ -158,26 +158,42 @@
 {
     <div class="panel">
         <div class="panel-head">
-            <h2>@_selected.ProductCode — revisions</h2>
+            <h2>@_selected.ProductCode - versions</h2>
             <button type="button" class="btn ghost sm" @onclick="() => _selected = null">Close</button>
         </div>
         <div class="panel-body">
             <AuthorizeView Roles="Administrator,Planner">
                 <Authorized>
                     <div class="row" style="margin-bottom:14px;">
-                        <input type="text" placeholder="Revision number, for example B"
-                               @bind="_newVersionNumber" style="max-width:220px;" />
-                        <button type="button" class="btn" disabled="@(_busy || string.IsNullOrWhiteSpace(_newVersionNumber))"
-                                @onclick="AddVersionAsync">
-                            Add draft revision
+                        <button type="button" class="btn" @onclick="() => _creatingVersion = !_creatingVersion">
+                            Create version
                         </button>
                     </div>
                 </Authorized>
             </AuthorizeView>
 
+            @if (_creatingVersion)
+            {
+                <div class="panel">
+                    <div class="panel-head"><h2>Create a version</h2></div>
+                    <div class="panel-body">
+                        <EditForm Model="_newProductVersion" OnValidSubmit="CreateVersionAsync" FormName="create-version">
+                            <DataAnnotationsValidator />
+                            <div class="form-grid">
+                                <div class="field">
+                                    <label>Product version number</label>
+                                    <InputText @bind-value="_newProductVersion.VersionNumber" placeholder="1" />
+                                </div>
+                            </div>
+                            <button type="submit" class="btn primary" disabled="@_busy">Create</button>
+                        </EditForm>
+                    </div>
+                </div>
+            }
+
             @if (_selected.Versions.Count == 0)
             {
-                <EmptyState Title="No revisions yet"
+                <EmptyState Title="No version yet"
                             Message="Add a draft revision before raising orders against this product." />
             }
             else
@@ -185,12 +201,12 @@
                 <table class="data">
                     <thead>
                         <tr>
-                            <th>Revision</th>
+                            <th>Version</th>
                             <th>Status</th>
                             <th>Created</th>
                             <th>Released</th>
                             <th>Notes</th>
-                            <th></th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -212,6 +228,17 @@
                                                 <button type="button" class="btn ghost sm" disabled="@_busy"
                                                         @onclick="() => ReleaseVersionAsync(version.Id)">
                                                     Release
+                                                </button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                    }
+                                    @if (version.Status == ProductVersionStatusDto.Released)
+                                    {
+                                        <AuthorizeView Roles="Administrator,Planner">
+                                            <Authorized>
+                                                <button type="button" class="btn ghost sm" disabled="@_busy"
+                                                        @onclick="() => ObsoleteVersionAsync(version.Id)">
+                                                    Obsolete
                                                 </button>
                                             </Authorized>
                                         </AuthorizeView>
@@ -239,8 +266,10 @@
     private bool _loading = true;
     private bool _busy;
     private bool _creating;
+    private bool _creatingVersion;
 
     private CreateProductRequest _newProduct = new();
+    private CreateProductVersionRequest _newProductVersion = new();
     private string? _newVersionNumber;
 
     protected override Task OnInitializedAsync() => LoadAsync();
@@ -308,21 +337,25 @@
         }
     }
 
-    private async Task AddVersionAsync()
+    private async Task CreateVersionAsync()
     {
-        if (_selected is null || string.IsNullOrWhiteSpace(_newVersionNumber))
-        {
+        if (_selected == null)
             return;
-        }
 
         _busy = true;
         try
         {
-            await Api.AddProductVersionAsync(
-                _selected.Id,
-                new AddProductVersionRequest { VersionNumber = _newVersionNumber });
+            var newVersion = new CreateProductVersionRequest
+                {
+                    VersionNumber = _newProductVersion.VersionNumber,
+                    Notes = _newProductVersion.Notes
+                };
 
+            await Api.AddProductVersionAsync(_selected.Id, newVersion);
+
+            _creatingVersion = false;
             _newVersionNumber = null;
+
             await OpenAsync(_selected.Id);
             await LoadAsync();
         }
@@ -347,6 +380,29 @@
         try
         {
             _selected = await Api.ReleaseProductVersionAsync(_selected.Id, versionId);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ObsoleteVersionAsync(Guid versionId)
+    {
+        if (_selected is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            _selected = await Api.ObsoleteProductVersionAsync(_selected.Id, versionId);
             await LoadAsync();
         }
         catch (Exception ex)
