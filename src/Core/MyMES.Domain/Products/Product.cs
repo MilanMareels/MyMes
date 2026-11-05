@@ -37,12 +37,13 @@ public sealed class Product : AuditableEntity
     {
     }
 
-    private Product(Guid id, string productCode, string name, string? description, string unitOfMeasure)
+    private Product(Guid id, string productCode, string name, string? description, string itemType ,string unitOfMeasure)
         : base(id)
     {
         ProductCode = productCode;
         Name = name;
         Description = description;
+        ItemType = itemType;
         UnitOfMeasure = unitOfMeasure;
         IsActive = true;
     }
@@ -53,6 +54,8 @@ public sealed class Product : AuditableEntity
     public string Name { get; private set; } = string.Empty;
 
     public string? Description { get; private set; }
+
+    public string ItemType {get; private set; } = "10";
 
     /// <summary>Unit the product is counted in, for example <c>pcs</c> or <c>kg</c>.</summary>
     public string UnitOfMeasure { get; private set; } = "pcs";
@@ -66,7 +69,7 @@ public sealed class Product : AuditableEntity
     public ProductVersion? ReleasedVersion =>
         _versions.SingleOrDefault(v => v.Status == ProductVersionStatus.Released);
 
-    public static Product Create(string productCode, string name, string? description, string unitOfMeasure)
+    public static Product Create(string productCode, string name, string? description, string itemType, string unitOfMeasure)
     {
         if (string.IsNullOrWhiteSpace(productCode))
         {
@@ -83,6 +86,7 @@ public sealed class Product : AuditableEntity
             productCode.Trim().ToUpperInvariant(),
             name.Trim(),
             description?.Trim(),
+            itemType,
             string.IsNullOrWhiteSpace(unitOfMeasure) ? "pcs" : unitOfMeasure.Trim());
     }
 
@@ -102,7 +106,7 @@ public sealed class Product : AuditableEntity
     /// <exception cref="DomainException">
     /// The product is inactive, the version number is blank, or that number already exists.
     /// </exception>
-    public ProductVersion AddVersion(string versionNumber, string? notes, DateTime utcNow)
+    public ProductVersion AddVersion(string versionNumber, string VersionDescription, double quantity, DateTime utcNow)
     {
         if (!IsActive)
         {
@@ -124,7 +128,7 @@ public sealed class Product : AuditableEntity
                 $"Product {ProductCode} already has revision {normalised}.");
         }
 
-        var version = ProductVersion.CreateDraft(Id, normalised, notes, utcNow);
+        var version = ProductVersion.CreateDraft(Id, normalised, VersionDescription, quantity, utcNow);
         _versions.Add(version);
         return version;
     }
@@ -222,12 +226,13 @@ public sealed class ProductVersion : Entity
     {
     }
 
-    private ProductVersion(Guid id, Guid productId, string versionNumber, string? notes, DateTime utcNow)
+    private ProductVersion(Guid id, Guid productId, string versionNumber, string versionDescription, double quantity, DateTime utcNow)
         : base(id)
     {
         ProductId = productId;
         VersionNumber = versionNumber;
-        Notes = notes;
+        VersionDescription = versionDescription;
+        Quantity = quantity;
         Status = ProductVersionStatus.Draft;
         CreatedAtUtc = utcNow;
     }
@@ -239,7 +244,9 @@ public sealed class ProductVersion : Entity
 
     public ProductVersionStatus Status { get; private set; }
 
-    public string? Notes { get; private set; }
+    public string VersionDescription { get; private set; } = string.Empty;
+
+    public double Quantity { get; private set; }
 
     public DateTime CreatedAtUtc { get; private set; }
 
@@ -252,8 +259,8 @@ public sealed class ProductVersion : Entity
     /// <summary>Navigation back to the owning aggregate; set by EF Core.</summary>
     public Product? Product { get; private set; }
 
-    internal static ProductVersion CreateDraft(Guid productId, string versionNumber, string? notes, DateTime utcNow) =>
-        new(NewId(), productId, versionNumber, notes?.Trim(), utcNow);
+    internal static ProductVersion CreateDraft(Guid productId, string versionNumber, string versionDescription, double quantity, DateTime utcNow) =>
+        new(NewId(), productId, versionNumber, versionDescription, quantity, utcNow);
 
     internal void Release(DateTime utcNow)
     {
@@ -271,20 +278,7 @@ public sealed class ProductVersion : Entity
 
         Status = ProductVersionStatus.Obsolete;
         ObsoletedAtUtc = utcNow;
-    }
-
-    /// <summary>Updates the free-text notes. Allowed on a draft only, since released revisions are frozen.</summary>
-    public void UpdateNotes(string? notes)
-    {
-        if (Status != ProductVersionStatus.Draft)
-        {
-            throw new DomainException(
-                "product_version.frozen",
-                $"Revision {VersionNumber} is {Status} and can no longer be edited.");
-        }
-
-        Notes = notes?.Trim();
-    }
+    }    
 }
 
 /// <summary>Raised when a revision becomes the released one for its product.</summary>

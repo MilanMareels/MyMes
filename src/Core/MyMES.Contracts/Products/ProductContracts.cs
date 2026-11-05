@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Dynamic;
 
 namespace MyMES.Contracts.Products;
 
@@ -16,6 +17,7 @@ public sealed record ProductDto(
     string ProductCode,
     string Name,
     string? Description,
+    string ItemType,
     string UnitOfMeasure,
     bool IsActive,
     Guid? ReleasedVersionId,
@@ -29,6 +31,7 @@ public sealed record ProductSummaryDto(
     Guid Id,
     string ProductCode,
     string Name,
+    string ItemType,
     string UnitOfMeasure,
     bool IsActive,
     string? ReleasedVersionNumber,
@@ -40,7 +43,8 @@ public sealed record ProductVersionDto(
     Guid ProductId,
     string VersionNumber,
     ProductVersionStatusDto Status,
-    string? Notes,
+    string VersionDescription,
+    double Quantity,
     DateTime CreatedAtUtc,
     DateTime? ReleasedAtUtc,
     DateTime? ObsoletedAtUtc);
@@ -58,6 +62,9 @@ public sealed record CreateProductRequest
 
     [StringLength(1000)]
     public string? Description { get; set; }
+
+    [Required]
+    public string ItemType { get; set; } = "10";
 
     [StringLength(16)]
     public string UnitOfMeasure { get; set; } = "pcs";
@@ -89,6 +96,12 @@ public sealed record CreateProductVersionRequest
     public string VersionNumber { get; set; } = string.Empty;
 
     [StringLength(2000)]
-    public string? Notes { get; set; }
+    public string VersionDescription { get; set; } = string.Empty;
+
+    [Required]
+    public double Quantity { get; set; }
+
+    [Required]
+    public CreateProductRequest[] Recepie { get; set; } = [];
 }
 

@@ -96,12 +96,13 @@ public sealed class ProductService(
                 request.ProductCode,
                 request.Name,
                 request.Description,
+                request.ItemType,
                 request.UnitOfMeasure);
 
             // Creating the first revision here saves a second call for the common case.
             if (!string.IsNullOrWhiteSpace(request.InitialVersionNumber))
             {
-                product.AddVersion(request.InitialVersionNumber, notes: null, clock.UtcNow);
+                product.AddVersion(request.InitialVersionNumber, request.Description,  0.0, clock.UtcNow);
             }
 
             db.Products.Add(product);
@@ -152,7 +153,7 @@ public sealed class ProductService(
 
         try
         {
-            var version = product.AddVersion(request.VersionNumber, request.Notes, clock.UtcNow);
+            var version = product.AddVersion(request.VersionNumber, request.VersionDescription, request.Quantity, clock.UtcNow);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
             logger.LogInformation(

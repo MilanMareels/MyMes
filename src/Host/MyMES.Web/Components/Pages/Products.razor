@@ -44,6 +44,10 @@
                         <label>Unit of measure</label>
                         <InputText @bind-Value="_newProduct.UnitOfMeasure" />
                     </div>
+                    <div class="field wide">
+                        <label>ItemType</label>
+                        <InputText @bind-Value="_newProduct.ItemType" />
+                    </div>
                     <div class="field">
                         <label>First version <span class="muted">(optional)</span></label>
                         <InputText @bind-Value="_newProduct.InitialVersionNumber" placeholder="A" />
@@ -88,6 +92,7 @@
                             <th>Code</th>
                             <th>Name</th>
                             <th>Unit</th>
+                            <th>ItemType</th>
                             <th>Released version</th>
                             <th class="num">Versions</th>
                             <th>Active</th>
@@ -101,6 +106,7 @@
                                 <td><strong>@product.ProductCode</strong></td>
                                 <td>@product.Name</td>
                                 <td class="muted">@product.UnitOfMeasure</td>
+                                <td>@product.ItemType</td>
                                 <td>
                                     @if (product.ReleasedVersionNumber is { Length: > 0 } released)
                                     {
@@ -219,7 +225,7 @@
                                 <td class="muted small">
                                     @(version.ReleasedAtUtc?.ToLocalTime().ToString("dd/MM/yy HH:mm") ?? "-")
                                 </td>
-                                <td class="muted small">@version.Notes</td>
+                                <td class="muted small">@version.VersionDescription</td>
                                 <td>
                                     @if (version.Status == ProductVersionStatusDto.Draft)
                                     {
@@ -345,14 +351,7 @@
         _busy = true;
         try
         {
-            var newVersion = new CreateProductVersionRequest
-                {
-                    VersionNumber = _newProductVersion.VersionNumber,
-                    Notes = _newProductVersion.Notes
-                };
-
-            await Api.AddProductVersionAsync(_selected.Id, newVersion);
-
+            await Api.AddProductVersionAsync(_selected.Id, _newProductVersion);
             _creatingVersion = false;
             _newVersionNumber = null;
 

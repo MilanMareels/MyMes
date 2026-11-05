@@ -24,6 +24,10 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.Description)
             .HasMaxLength(1000);
 
+            builder.Property(p => p.ItemType)
+            .HasMaxLength(50)
+            .IsRequired();
+
         builder.Property(p => p.UnitOfMeasure)
             .HasMaxLength(16)
             .IsRequired();
@@ -72,7 +76,7 @@ internal sealed class ProductVersionConfiguration : IEntityTypeConfiguration<Pro
             .HasConversion<int>()
             .IsRequired();
 
-        builder.Property(v => v.Notes).HasMaxLength(2000);
+        builder.Property(v => v.VersionDescription).HasMaxLength(2000);
         builder.Property(v => v.CreatedAtUtc).IsRequired();
 
         // A revision label is unique within its product, not across the catalogue.
