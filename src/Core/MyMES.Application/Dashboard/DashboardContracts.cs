@@ -13,9 +13,9 @@ public sealed record DashboardSummaryDto(
 /// <summary>A module the host has loaded, as reported by the diagnostics endpoint.</summary>
 public sealed record ModuleInfoDto(string Name, int Order, string Assembly);
 
-/// <summary>Everything the host loaded at start-up: modules first, then plugins.</summary>
+/// <summary>Everything the host loaded at start-up: modules first, then extensions.</summary>
 public sealed record PlatformInfoDto(
     string Version,
     string Environment,
     IReadOnlyList<ModuleInfoDto> Modules,
-    IReadOnlyList<string> Plugins);
+    IReadOnlyList<string> Extensions);

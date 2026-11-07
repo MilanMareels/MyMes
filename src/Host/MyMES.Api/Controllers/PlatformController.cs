@@ -23,6 +23,6 @@ public sealed class PlatformController(IModuleRegistry registry, IHostEnvironmen
             version,
             environment.EnvironmentName,
             [.. registry.Modules.Select(m => new ModuleInfoDto(m.Name, m.Order, m.AssemblyName))],
-            registry.Plugins));
+            registry.Extensions));
     }
 }

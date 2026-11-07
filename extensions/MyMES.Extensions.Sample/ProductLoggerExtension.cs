@@ -8,7 +8,7 @@ using MyMES.PluginSystem;
 
 namespace MyMES.Extensions.Sample;
 
-public sealed class ProductLoggerPlugin : IMyMesPlugin
+public sealed class ProductLoggerExtension : IMyMesExtension
 {
     public string Name => "Product logger";
 
@@ -35,7 +35,7 @@ internal sealed class ProductLoggingDecorator(IProductService inner, ILogger<Pro
 
         if (result.IsSuccess)
         {
-            logger.LogInformation("[product-logger-plugin] Product {Code} ('{Name}') aangemaakt.", result.Value.ProductCode, result.Value.Name);
+            logger.LogInformation("[product-logger-extension] Product {Code} ('{Name}') aangemaakt.", result.Value.ProductCode, result.Value.Name);
         }
 
         return result;

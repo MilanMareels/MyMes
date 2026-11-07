@@ -22,7 +22,7 @@ namespace MyMES.PluginSystem;
 /// <c>docs/plugins/getting-started.md</c>.
 /// </para>
 /// </remarks>
-public interface IMyMesPlugin
+public interface IMyMesExtension
 {
     /// <summary>Stable identifier, shown in the platform inventory.</summary>
     string Name { get; }

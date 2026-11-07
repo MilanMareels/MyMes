@@ -10,31 +10,31 @@ namespace MyMES.PluginSystem;
 /// <summary>What the host loaded at start-up, available for diagnostics at run time.</summary>
 public sealed record LoadedModule(string Name, int Order, string AssemblyName);
 
-/// <summary>The modules and plugins this process is running with.</summary>
+/// <summary>The modules and extensions this process is running with.</summary>
 public interface IModuleRegistry
 {
     IReadOnlyList<LoadedModule> Modules { get; }
 
-    IReadOnlyList<string> Plugins { get; }
+    IReadOnlyList<string> Extensions { get; }
 }
 
-internal sealed class ModuleRegistry(IReadOnlyList<LoadedModule> modules, IReadOnlyList<string> plugins)
+internal sealed class ModuleRegistry(IReadOnlyList<LoadedModule> modules, IReadOnlyList<string> extensions)
     : IModuleRegistry
 {
     public IReadOnlyList<LoadedModule> Modules { get; } = modules;
 
-    public IReadOnlyList<string> Plugins { get; } = plugins;
+    public IReadOnlyList<string> Extensions { get; } = extensions;
 }
 
 public static class ModuleRegistrationExtensions
 {
     /// <summary>
-    /// Discovers and registers every module and plugin automatically.
+    /// Discovers and registers every module and extension automatically.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Modules run first, in <see cref="IMyMesModule.Order"/> sequence, then plugins. That order
-    /// is the whole point: by the time a plugin's <c>ConfigureServices</c> runs, every default it
+    /// Modules run first, in <see cref="IMyMesModule.Order"/> sequence, then extensions. That order
+    /// is the whole point: by the time an extension's <c>ConfigureServices</c> runs, every default it
     /// might want to replace or decorate is already registered.
     /// </para>
     /// <para>
@@ -78,37 +78,37 @@ public static class ModuleRegistrationExtensions
             logger.LogInformation("Module {Module} registered (order {Order}).", module.Name, module.Order);
         }
 
-        var plugins = Instantiate<IMyMesPlugin>(distinct, logger)
+        var extensions = Instantiate<IMyMesExtension>(distinct, logger)
             .OrderBy(p => p.Name, StringComparer.Ordinal)
             .ToList();
 
-        var pluginNames = new List<string>(plugins.Count);
+        var extensionNames = new List<string>(extensions.Count);
 
-        foreach (var plugin in plugins)
+        foreach (var extension in extensions)
         {
-            if (!IsCompatible(plugin.CompatiblePlatformVersion, platformVersion))
+            if (!IsCompatible(extension.CompatiblePlatformVersion, platformVersion))
             {
                 logger.LogWarning(
-                    "Plugin {Plugin} {Version} targets platform {Target} but this host is {Actual}. "
+                    "Extension {Extension} {Version} targets platform {Target} but this host is {Actual}. "
                     + "Loading it anyway; verify it behaves.",
-                    plugin.Name,
-                    plugin.Version,
-                    plugin.CompatiblePlatformVersion,
+                    extension.Name,
+                    extension.Version,
+                    extension.CompatiblePlatformVersion,
                     platformVersion);
             }
 
-            plugin.ConfigureServices(services, configuration);
+            extension.ConfigureServices(services, configuration);
 
-            if (plugin is IEndpointModule endpointPlugin)
+            if (extension is IEndpointModule endpointExtension)
             {
-                services.AddSingleton<IEndpointModule>(endpointPlugin);
+                services.AddSingleton<IEndpointModule>(endpointExtension);
             }
 
-            pluginNames.Add($"{plugin.Name} {plugin.Version}");
-            logger.LogInformation("Plugin {Plugin} {Version} registered.", plugin.Name, plugin.Version);
+            extensionNames.Add($"{extension.Name} {extension.Version}");
+            logger.LogInformation("Extension {Extension} {Version} registered.", extension.Name, extension.Version);
         }
 
-        services.AddSingleton<IModuleRegistry>(new ModuleRegistry(loaded, pluginNames));
+        services.AddSingleton<IModuleRegistry>(new ModuleRegistry(loaded, extensionNames));
 
         return services;
     }
