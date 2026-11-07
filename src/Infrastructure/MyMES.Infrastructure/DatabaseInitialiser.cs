@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace MyMES.Persistence;
+namespace MyMES.Infrastructure;
 
 /// <summary>Brings the database schema up to date at start-up, when that is allowed.</summary>
 public interface IDatabaseInitialiser

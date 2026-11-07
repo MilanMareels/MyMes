@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace MyMES.Persistence.Migrations
+namespace MyMES.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration

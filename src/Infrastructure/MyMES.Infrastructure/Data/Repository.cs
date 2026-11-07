@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MyMES.Application.Data;
 
-namespace MyMES.Persistence;
+namespace MyMES.Infrastructure;
 
 /// <summary>Generic EF Core repository. The only place a queryable is exposed.</summary>
 public sealed class Repository<TEntity>(MyMesDbContext db) : IRepository<TEntity> where TEntity : class

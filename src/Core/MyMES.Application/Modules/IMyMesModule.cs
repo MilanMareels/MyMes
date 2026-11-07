@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MyMES.Abstractions.Modules;
+namespace MyMES.Application.Modules;
 
 /// <summary>
 /// A functional area of the MES that owns its own services and registers them with the host.

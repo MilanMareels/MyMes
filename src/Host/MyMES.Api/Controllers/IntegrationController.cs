@@ -2,7 +2,6 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyMES.Application.Integrations;
-using MyMES.Contracts.Integrations;
 
 namespace MyMES.Api.Controllers;
 

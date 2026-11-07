@@ -1,11 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using MyMES.Abstractions.Security;
-using MyMES.Abstractions.Time;
-using MyMES.Identity;
-using MyMES.Messaging;
-using MyMES.Persistence;
+using MyMES.Application.Security;
+using MyMES.Application.Time;
+using MyMES.Infrastructure;
 
 namespace MyMES.Infrastructure;
 

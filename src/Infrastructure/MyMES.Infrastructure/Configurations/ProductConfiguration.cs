@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MyMES.Domain.Products;
 
-namespace MyMES.Persistence.Configurations;
+namespace MyMES.Infrastructure.Configurations;
 
 internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
 {

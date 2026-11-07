@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
-using MyMES.Abstractions.Security;
+using MyMES.Application.Security;
 
-namespace MyMES.Identity;
+namespace MyMES.Infrastructure;
 
 /// <summary>
 /// Turns every permission in the catalogue into a named authorization policy.

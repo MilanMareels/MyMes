@@ -5,8 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using MyMES.Api.Security;
-using MyMES.Identity;
-using MyMES.Persistence;
+using MyMES.Infrastructure;
 
 namespace MyMES.Api.Extensions;
 

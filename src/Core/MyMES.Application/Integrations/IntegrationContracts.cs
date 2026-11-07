@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace MyMES.Contracts.Integrations;
+namespace MyMES.Application.Integrations;
 
 public sealed record IncomingErpMessageDto(Guid Id, string ExternalReference, string ProductCode, IncomingMessageStatusDto Status, string? Error, DateTime ReceivedAtUtc, DateTime? ProcessedAtUtc);
 

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace MyMES.Contracts.Identity;
+namespace MyMES.Application.Identity;
 
 /// <summary>Credentials posted to the token endpoint.</summary>
 public sealed record LoginRequest

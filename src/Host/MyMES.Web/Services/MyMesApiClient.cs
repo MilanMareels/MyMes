@@ -3,12 +3,12 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using MyMES.Contracts.Common;
-using MyMES.Contracts.Dashboard;
-using MyMES.Contracts.Identity;
-using MyMES.Contracts.Integrations;
-using MyMES.Contracts.Production;
-using MyMES.Contracts.Products;
+using MyMES.Application.Common;
+using MyMES.Application.Dashboard;
+using MyMES.Application.Identity;
+using MyMES.Application.Integrations;
+using MyMES.Application.Production;
+using MyMES.Application.Products;
 
 namespace MyMES.Web.Services;
 

@@ -1,17 +1,17 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using MyMES.Abstractions.Security;
-using MyMES.Abstractions.Time;
+using MyMES.Application.Security;
+using MyMES.Application.Time;
 using MyMES.Domain.Common;
 using MyMES.Domain.Integrations;
 using MyMES.Domain.Personnel;
 using MyMES.Domain.Production;
 using MyMES.Domain.Products;
-using MyMES.EventBus;
-using MyMES.Identity;
+using MyMES.Application;
+using MyMES.Infrastructure;
 
-namespace MyMES.Persistence;
+namespace MyMES.Infrastructure;
 
 /// <summary>
 /// The single database context: MES tables and the ASP.NET Core Identity schema.

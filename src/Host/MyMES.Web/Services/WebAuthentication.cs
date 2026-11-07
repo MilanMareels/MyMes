@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using MyMES.Abstractions.Security;
-using MyMES.Contracts.Identity;
+using MyMES.Application.Security;
+using MyMES.Application.Identity;
 
 namespace MyMES.Web.Services;
 

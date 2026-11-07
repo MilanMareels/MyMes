@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
-namespace MyMES.Localization;
+namespace MyMES.Application;
 
 /// <summary>Which cultures the UI offers and which one it falls back to.</summary>
 public sealed class LocalizationOptions

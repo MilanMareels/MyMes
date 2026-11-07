@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace MyMES.Contracts.Products;
+namespace MyMES.Application.Products;
 
 /// <summary>Product revision status as published on the wire.</summary>
 public enum ProductVersionStatusDto

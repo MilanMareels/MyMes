@@ -1,8 +1,9 @@
-﻿using System.Reflection;
+using System.Reflection;
+using System.Runtime.Loader;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MyMES.Abstractions.Modules;
+using MyMES.Application.Modules;
 
 namespace MyMES.PluginSystem;
 
@@ -28,7 +29,7 @@ internal sealed class ModuleRegistry(IReadOnlyList<LoadedModule> modules, IReadO
 public static class ModuleRegistrationExtensions
 {
     /// <summary>
-    /// Discovers and registers every module and plugin in the given assemblies.
+    /// Discovers and registers every module and plugin automatically.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -37,27 +38,23 @@ public static class ModuleRegistrationExtensions
     /// might want to replace or decorate is already registered.
     /// </para>
     /// <para>
-    /// Discovery is over assemblies the host already references. Loading arbitrary DLLs from a
-    /// directory is deliberately not done here; see <see cref="IMyMesPlugin"/> on why that is a
-    /// deployment decision rather than a security boundary.
+    /// Assemblies are found automatically: every <c>MyMES*.dll</c> next to the host. Add a new
+    /// extension project and it is picked up without any registration code.
     /// </para>
     /// </remarks>
     /// <param name="services">Container being built.</param>
     /// <param name="configuration">Host configuration, handed to each module.</param>
     /// <param name="platformVersion">Version the host advertises, for compatibility warnings.</param>
     /// <param name="logger">Receives what was loaded and what was skipped.</param>
-    /// <param name="assemblies">Assemblies to scan.</param>
     public static IServiceCollection AddMyMesModules(
         this IServiceCollection services,
         IConfiguration configuration,
         string platformVersion,
-        ILogger logger,
-        params Assembly[] assemblies)
+        ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(assemblies);
 
-        var distinct = assemblies.Where(a => a is not null).Distinct().ToArray();
+        var distinct = DiscoverPluginAssemblies(logger);
 
         var modules = Instantiate<IMyMesModule>(distinct, logger)
             .OrderBy(m => m.Order)
@@ -114,6 +111,36 @@ public static class ModuleRegistrationExtensions
         services.AddSingleton<IModuleRegistry>(new ModuleRegistry(loaded, pluginNames));
 
         return services;
+    }
+
+    /// <summary>
+    /// Finds every MyMES assembly next to the host's own DLLs. Because referenced projects are
+    /// copied there on build, a new extension project is picked up automatically.
+    /// </summary>
+    private static Assembly[] DiscoverPluginAssemblies(ILogger logger)
+    {
+        var result = new List<Assembly>();
+
+        var baseDirectory = AppContext.BaseDirectory;
+        if (Directory.Exists(baseDirectory))
+        {
+            foreach (var path in Directory.EnumerateFiles(baseDirectory, "MyMES*.dll", SearchOption.TopDirectoryOnly))
+            {
+                try
+                {
+                    result.Add(AssemblyLoadContext.Default.LoadFromAssemblyPath(Path.GetFullPath(path)));
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Could not load assembly {Path}.", path);
+                }
+            }
+        }
+
+        return result
+            .GroupBy(a => a.GetName().Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .ToArray();
     }
 
     /// <summary>

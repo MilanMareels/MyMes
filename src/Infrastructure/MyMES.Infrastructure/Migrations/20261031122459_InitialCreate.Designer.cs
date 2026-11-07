@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using MyMES.Persistence;
+using MyMES.Infrastructure;
 
 #nullable disable
 
-namespace MyMES.Persistence.Migrations
+namespace MyMES.Infrastructure.Migrations
 {
     [DbContext(typeof(MyMesDbContext))]
     [Migration("20261031122459_InitialCreate")]
@@ -400,7 +400,7 @@ namespace MyMES.Persistence.Migrations
                     b.ToTable("ProductVersions", "mes");
                 });
 
-            modelBuilder.Entity("MyMES.Identity.ApplicationRole", b =>
+            modelBuilder.Entity("MyMES.Infrastructure.ApplicationRole", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
@@ -431,7 +431,7 @@ namespace MyMES.Persistence.Migrations
                     b.ToTable("Roles", "identity");
                 });
 
-            modelBuilder.Entity("MyMES.Identity.ApplicationUser", b =>
+            modelBuilder.Entity("MyMES.Infrastructure.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
@@ -515,7 +515,7 @@ namespace MyMES.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
-                    b.HasOne("MyMES.Identity.ApplicationRole", null)
+                    b.HasOne("MyMES.Infrastructure.ApplicationRole", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -524,7 +524,7 @@ namespace MyMES.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("MyMES.Identity.ApplicationUser", null)
+                    b.HasOne("MyMES.Infrastructure.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -533,7 +533,7 @@ namespace MyMES.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("MyMES.Identity.ApplicationUser", null)
+                    b.HasOne("MyMES.Infrastructure.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -542,13 +542,13 @@ namespace MyMES.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
                 {
-                    b.HasOne("MyMES.Identity.ApplicationRole", null)
+                    b.HasOne("MyMES.Infrastructure.ApplicationRole", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MyMES.Identity.ApplicationUser", null)
+                    b.HasOne("MyMES.Infrastructure.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -557,7 +557,7 @@ namespace MyMES.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("MyMES.Identity.ApplicationUser", null)
+                    b.HasOne("MyMES.Infrastructure.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)

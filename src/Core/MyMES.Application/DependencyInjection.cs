@@ -4,7 +4,7 @@ using MyMES.Application.Dashboard;
 using MyMES.Application.Integrations;
 using MyMES.Application.Production;
 using MyMES.Application.Products;
-using MyMES.EventBus;
+using MyMES.Application;
 
 namespace MyMES.Application;
 

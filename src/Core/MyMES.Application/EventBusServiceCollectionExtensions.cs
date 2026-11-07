@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace MyMES.EventBus;
+namespace MyMES.Application;
 
 public static class EventBusServiceCollectionExtensions
 {

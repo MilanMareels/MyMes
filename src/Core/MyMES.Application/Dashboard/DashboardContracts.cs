@@ -1,4 +1,4 @@
-namespace MyMES.Contracts.Dashboard;
+namespace MyMES.Application.Dashboard;
 
 /// <summary>
 /// The figures behind the dashboard KPI cards, assembled server-side in one round trip.

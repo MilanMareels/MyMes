@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using MyMES.Api.Security;
-using MyMES.Contracts.Identity;
-using MyMES.Identity;
+using MyMES.Application.Identity;
+using MyMES.Infrastructure;
 
 namespace MyMES.Api.Controllers;
 

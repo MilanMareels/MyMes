@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using MyMES.Abstractions.Results;
+using MyMES.Application.Results;
 
 namespace MyMES.Api.Controllers;
 

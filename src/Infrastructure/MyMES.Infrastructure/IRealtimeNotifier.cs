@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using MyMES.Contracts.Production;
+using MyMES.Application.Production;
 
-namespace MyMES.Messaging;
+namespace MyMES.Infrastructure;
 
 /// <summary>
 /// Pushes changes to connected clients.

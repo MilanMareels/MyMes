@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using MyMES.Abstractions.Results;
-using MyMES.Contracts.Integrations;
+using MyMES.Application.Results;
+using MyMES.Application.Integrations;
 
 namespace MyMES.Application.Integrations;
 

@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using MyMES.Abstractions.Results;
-using MyMES.Abstractions.Time;
+using MyMES.Application.Results;
+using MyMES.Application.Time;
 using MyMES.Application.Data;
 using MyMES.Application.Mapping;
-using MyMES.Contracts.Common;
-using MyMES.Contracts.Products;
+using MyMES.Application.Common;
+using MyMES.Application.Products;
 using MyMES.Domain.Products;
-using MyMES.EventBus;
+using MyMES.Application;
 
 namespace MyMES.Application.Products;
 
@@ -110,7 +110,6 @@ public sealed class ProductService(IRepository<Product> products, IDateTimeProvi
         products.Add(product);
         await products.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        logger.LogInformation("Product {ProductCode} created with id {ProductId}.", product.ProductCode, product.Id);
         return Result.Success(product.ToDto());
     }
 

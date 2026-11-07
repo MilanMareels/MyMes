@@ -1,8 +1,8 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MyMES.Abstractions.Security;
-using MyMES.Contracts.Dashboard;
+using MyMES.Application.Security;
+using MyMES.Application.Dashboard;
 using MyMES.PluginSystem;
 
 namespace MyMES.Api.Controllers;

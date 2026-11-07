@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using MyMES.Abstractions.Security;
-using MyMES.Localization;
+using MyMES.Application.Security;
+using MyMES.Application;
 using MyMES.Web.Components;
 using MyMES.Web.Services;
 using Serilog;

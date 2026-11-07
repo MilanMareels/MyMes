@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using MyMES.Abstractions.Security;
+using MyMES.Application.Security;
 
 namespace MyMES.Api.Security;
 

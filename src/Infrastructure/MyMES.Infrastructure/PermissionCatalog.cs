@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using MyMES.Abstractions.Security;
+using MyMES.Application.Security;
 
-namespace MyMES.Identity;
+namespace MyMES.Infrastructure;
 
 /// <summary>
 /// The set of permissions the running system knows about, including those contributed by modules

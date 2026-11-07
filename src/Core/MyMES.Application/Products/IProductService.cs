@@ -1,6 +1,6 @@
-using MyMES.Abstractions.Results;
-using MyMES.Contracts.Common;
-using MyMES.Contracts.Products;
+using MyMES.Application.Results;
+using MyMES.Application.Common;
+using MyMES.Application.Products;
 
 namespace MyMES.Application.Products;
 

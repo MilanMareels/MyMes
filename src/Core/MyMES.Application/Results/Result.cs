@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace MyMES.Abstractions.Results;
+namespace MyMES.Application.Results;
 
 /// <summary>Classifies a failure so the host can map it onto a transport-specific status.</summary>
 public enum ErrorKind

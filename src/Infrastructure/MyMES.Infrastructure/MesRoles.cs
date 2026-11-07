@@ -1,6 +1,6 @@
-using MyMES.Abstractions.Security;
+using MyMES.Application.Security;
 
-namespace MyMES.Identity;
+namespace MyMES.Infrastructure;
 
 /// <summary>
 /// The roles shipped with the platform.

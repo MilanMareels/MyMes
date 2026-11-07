@@ -1,4 +1,4 @@
-namespace MyMES.Messaging;
+namespace MyMES.Infrastructure;
 
 /// <summary>
 /// Marks a message that crosses a process boundary.

@@ -1,6 +1,6 @@
-using MyMES.Contracts.Integrations;
-using MyMES.Contracts.Production;
-using MyMES.Contracts.Products;
+using MyMES.Application.Integrations;
+using MyMES.Application.Production;
+using MyMES.Application.Products;
 using MyMES.Domain.Integrations;
 using MyMES.Domain.Production;
 using MyMES.Domain.Products;
