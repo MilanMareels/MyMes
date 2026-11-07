@@ -111,6 +111,7 @@ internal static class ApiServiceCollectionExtensions
                 options.ReportApiVersions = true;
                 options.ApiVersionReader = new UrlSegmentApiVersionReader();
             })
+            .AddMvc()
             // Without this the versions are enforced but never described, so Swagger cannot show
             // which version an endpoint belongs to.
             .AddApiExplorer();

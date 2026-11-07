@@ -29,20 +29,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\extensions\MyMES.Extensions.Sample\MyMES.Extensions.Sample.csproj" />
-    <ProjectReference Include="..\..\BuildingBlocks\MyMES.EventBus\MyMES.EventBus.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\MyMES.PluginSystem\MyMES.PluginSystem.csproj" />
-    <ProjectReference Include="..\..\Core\MyMES.Abstractions\MyMES.Abstractions.csproj" />
     <ProjectReference Include="..\..\Core\MyMES.Application\MyMES.Application.csproj" />
-    <ProjectReference Include="..\..\Core\MyMES.Contracts\MyMES.Contracts.csproj" />
     <ProjectReference Include="..\..\Core\MyMES.Domain\MyMES.Domain.csproj" />
-    <ProjectReference Include="..\..\Infrastructure\MyMES.Identity\MyMES.Identity.csproj" />
     <ProjectReference Include="..\..\Infrastructure\MyMES.Infrastructure\MyMES.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Infrastructure\MyMES.Messaging\MyMES.Messaging.csproj" />
-    <ProjectReference Include="..\..\Infrastructure\MyMES.Persistence\MyMES.Persistence.csproj" />
-    <ProjectReference Include="..\..\Modules\MyMES.Modules.Inventory\MyMES.Modules.Inventory.csproj" />
-    <ProjectReference Include="..\..\Modules\MyMES.Modules.Machines\MyMES.Modules.Machines.csproj" />
-    <ProjectReference Include="..\..\Modules\MyMES.Modules.Production\MyMES.Modules.Production.csproj" />
-    <ProjectReference Include="..\..\Modules\MyMES.Modules.Quality\MyMES.Modules.Quality.csproj" />
   </ItemGroup>
 
 </Project>

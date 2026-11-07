@@ -1,11 +1,10 @@
 # Writing an extension
 
-MyMES is built to be extended without forking it. A customer or integrator can add modules,
-machine drivers, workflow steps and endpoints, and can replace or wrap services the platform
-ships with.
+MyMES is built to be extended without forking it. A customer or integrator can add endpoints and
+workflow steps, and can replace or wrap services the platform ships with.
 
-`extensions/MyMES.Extensions.Sample` is a working example that builds and is covered by the test
-suite. Start there.
+`extensions/MyMES.Extensions.Sample` is a working example that builds and runs as part of the
+solution. Start there.
 
 ---
 
@@ -29,7 +28,7 @@ So:
   holds only the permissions it needs. That boundary is real because the operating system
   enforces it.
 - **Give extension service accounts the minimum permissions.** The permission model works for
-  machine-to-machine callers; the MachineService is the worked example.
+  machine-to-machine callers.
 
 ---
 
@@ -52,23 +51,22 @@ Wrap the existing implementation so yours runs around it. Use to add behaviour w
 platform's: auditing, caching, pushing a copy of every booking to an ERP.
 
 ```csharp
-services.DecorateService<IMachineService, AuditingMachineService>();
+services.DecorateService<IProductService, AuditingProductService>();
 ```
 
 The decorator takes the wrapped service as a constructor parameter:
 
 ```csharp
-internal sealed class AuditingMachineService(IMachineService inner, ILogger<AuditingMachineService> logger)
-    : IMachineService
+internal sealed class AuditingProductService(IProductService inner, ILogger<AuditingProductService> logger)
+    : IProductService
 {
-    public async Task<Result<MachineDto>> ChangeStatusAsync(
-        Guid id, ChangeMachineStatusRequest request, CancellationToken cancellationToken = default)
+    public async Task<Result<ProductDto>> CreateAsync(
+        CreateProductRequest request, CancellationToken cancellationToken = default)
     {
-        var result = await inner.ChangeStatusAsync(id, request, cancellationToken);
+        var result = await inner.CreateAsync(request, cancellationToken);
         if (result.IsSuccess)
         {
-            logger.LogInformation("{MachineCode} moved to {Status}.",
-                result.Value.MachineCode, result.Value.Status);
+            logger.LogInformation("Product {Code} created.", result.Value.ProductCode);
         }
 
         return result;
@@ -82,10 +80,9 @@ internal sealed class AuditingMachineService(IMachineService inner, ILogger<Audi
 ### Extend
 
 Add functionality beside what exists, changing nothing. Use for anything the host resolves as a
-collection: extra event handlers, extra machine drivers, extra endpoints.
+collection: extra event handlers, extra endpoints.
 
 ```csharp
-services.ExtendWith<IMachineDriver, ModbusDriver>();
 services.AddEventHandler<ProductionOrderCompletedEvent, NotifyErpOnCompletion>();
 ```
 
@@ -110,7 +107,7 @@ public sealed class AcmePlugin : IMyMesPlugin, IEndpointModule
             return;
         }
 
-        services.DecorateService<IMachineService, AcmeAuditingMachineService>();
+        services.DecorateService<IProductService, AcmeProductAuditor>();
         services.AddEventHandler<ProductionOrderCompletedEvent, PostToErp>();
         services.AddHostedService<ErpSyncWorker>();
     }
@@ -144,7 +141,7 @@ Points worth copying:
 Reference the project from `MyMES.Api` and add its assembly to the `AddMyMesModules` call in
 `Program.cs`.
 
-Order is guaranteed: every built-in module runs first, then plugins. By the time your
+Order is guaranteed: every built-in service runs first, then plugins. By the time your
 `ConfigureServices` runs, every default you might want to replace or decorate is registered.
 Decorating something that is not registered throws with an explanation rather than failing
 silently.
@@ -160,38 +157,6 @@ catalog.Register("acme.sync", MesRoles.Administrator, MesRoles.Supervisor);
 
 Then use it: `RequireAuthorization("acme.sync")`.
 
-## Adding a machine driver
-
-Implement `IMachineDriver` in a project the MachineService references and register it. Drivers
-are resolved as a collection, so the poll loop does not change.
-
-```csharp
-public sealed class ModbusDriver(ILogger<ModbusDriver> logger) : IMachineDriver
-{
-    public string Protocol => "modbus-tcp";
-    public IReadOnlyCollection<string> MachineCodes => ["PRESS-01"];
-
-    public async Task<MachineReading?> ReadAsync(string machineCode, CancellationToken cancellationToken)
-    {
-        try
-        {
-            // ... read the registers ...
-        }
-        catch (SocketException ex)
-        {
-            // Unreachable is an expected condition on a shop floor, not an exception the
-            // poll loop should handle. Return null and it is reported as a comms failure.
-            logger.LogDebug(ex, "{MachineCode} did not answer.", machineCode);
-            return null;
-        }
-    }
-}
-```
-
-**Never put safety logic in a driver.** Emergency stop, light curtains and interlocks belong to
-the machine's own safety chain, which is independent of the MES by design and by regulation. The
-MES observes and records; it does not make a machine safe.
-
 ## Compatibility
 
 `CompatiblePlatformVersion` is compared on major and minor; patch releases stay compatible. A
@@ -200,11 +165,9 @@ integration targets 0.1 instead of 0.2 is the wrong default. Check the log after
 
 Stable to build against:
 
-- `MyMES.Contracts` — DTOs and wire enums
-- `MyMES.Abstractions` — module contract, `Result`, `IDateTimeProvider`, `ICurrentUser`,
-  permission constants
+- `MyMES.Application` — DTOs, `Result`, `IDateTimeProvider`, `ICurrentUser`, permission constants
+  and service interfaces
 - `MyMES.PluginSystem` — plugin contract and the three mechanisms
-- `MyMES.Application` service interfaces
 
-Not stable, and not intended for extensions: `MyMES.Persistence` internals, entity configurations,
-and anything marked `internal`.
+Not stable, and not intended for extensions: `MyMES.Infrastructure` internals, entity
+configurations, and anything marked `internal`.

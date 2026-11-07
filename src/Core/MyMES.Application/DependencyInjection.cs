@@ -2,7 +2,6 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MyMES.Application.Dashboard;
 using MyMES.Application.Integrations;
-using MyMES.Application.Machines;
 using MyMES.Application.Production;
 using MyMES.Application.Products;
 using MyMES.EventBus;
@@ -20,7 +19,6 @@ public static class DependencyInjection
     /// </remarks>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        services.AddScoped<IMachineService, MachineService>();
         services.AddScoped<IProductionOrderService, ProductionOrderService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IDashboardService, DashboardService>();

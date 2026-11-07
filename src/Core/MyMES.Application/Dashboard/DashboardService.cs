@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using MyMES.Abstractions.Time;
-using MyMES.Application.Abstractions;
+using MyMES.Application.Data;
 using MyMES.Contracts.Dashboard;
-using MyMES.Domain.Machines;
 using MyMES.Domain.Production;
+using MyMES.Domain.Products;
 
 namespace MyMES.Application.Dashboard;
 
@@ -14,7 +14,10 @@ public interface IDashboardService
 }
 
 /// <inheritdoc cref="IDashboardService"/>
-public sealed class DashboardService(IApplicationDbContext db, IDateTimeProvider clock) : IDashboardService
+public sealed class DashboardService(
+    IRepository<ProductionOrder> orders,
+    IRepository<Product> products,
+    IDateTimeProvider clock) : IDashboardService
 {
     public async Task<DashboardSummaryDto> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
@@ -23,19 +26,7 @@ public sealed class DashboardService(IApplicationDbContext db, IDateTimeProvider
 
         // Counted with aggregate queries rather than by loading rows: these numbers are polled
         // from the dashboard and must stay cheap as the tables grow.
-        var totalMachines = await db.Machines
-            .CountAsync(m => m.Status != MachineStatus.Decommissioned, cancellationToken)
-            .ConfigureAwait(false);
-
-        var runningMachines = await db.Machines
-            .CountAsync(m => m.Status == MachineStatus.Running, cancellationToken)
-            .ConfigureAwait(false);
-
-        var faultedMachines = await db.Machines
-            .CountAsync(m => m.Status == MachineStatus.Faulted, cancellationToken)
-            .ConfigureAwait(false);
-
-        var activeOrders = await db.ProductionOrders
+        var activeOrders = await orders.Query()
             .CountAsync(
                 o => o.Status == ProductionOrderStatus.Released
                      || o.Status == ProductionOrderStatus.InProgress
@@ -43,14 +34,12 @@ public sealed class DashboardService(IApplicationDbContext db, IDateTimeProvider
                 cancellationToken)
             .ConfigureAwait(false);
 
-        // "Today" means orders touched today; a booking-level ledger comes with the Production
-        // module's reporting work, and this stays honest until then.
-        var producedToday = await db.ProductionOrders
+        var producedToday = await orders.Query()
             .Where(o => o.UpdatedAtUtc != null && o.UpdatedAtUtc >= startOfDay)
             .SumAsync(o => (decimal?)o.ProducedQuantity, cancellationToken)
             .ConfigureAwait(false) ?? 0m;
 
-        var completedToday = await db.ProductionOrders
+        var completedToday = await orders.Query()
             .CountAsync(
                 o => o.Status == ProductionOrderStatus.Completed
                      && o.ActualEndUtc != null
@@ -58,14 +47,11 @@ public sealed class DashboardService(IApplicationDbContext db, IDateTimeProvider
                 cancellationToken)
             .ConfigureAwait(false);
 
-        var activeProducts = await db.Products
+        var activeProducts = await products.Query()
             .CountAsync(p => p.IsActive, cancellationToken)
             .ConfigureAwait(false);
 
         return new DashboardSummaryDto(
-            totalMachines,
-            runningMachines,
-            faultedMachines,
             activeOrders,
             producedToday,
             completedToday,

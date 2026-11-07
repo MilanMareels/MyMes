@@ -23,9 +23,3 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       Serilog__MinimumLevel__Default: Debug
-
-  machineservice:
-    environment:
-      DOTNET_ENVIRONMENT: Development
-      Serilog__MinimumLevel__Default: Debug
-      MachineService__PollIntervalSeconds: 5

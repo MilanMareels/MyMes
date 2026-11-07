@@ -1,5 +1,4 @@
 using FluentValidation;
-using MyMES.Contracts.Machines;
 using MyMES.Contracts.Production;
 using MyMES.Contracts.Products;
 
@@ -14,16 +13,6 @@ namespace MyMES.Application.Validation;
 /// Blazor <c>EditForm</c> enforces them in the browser without a round trip. Rules that span
 /// fields or need a format check live here and run on the server, where they cannot be bypassed.
 /// </remarks>
-public sealed class CreateMachineRequestValidator : AbstractValidator<CreateMachineRequest>
-{
-    public CreateMachineRequestValidator()
-    {
-        RuleFor(x => x.MachineCode)
-            .Matches("^[A-Za-z0-9][A-Za-z0-9._-]*$")
-            .WithMessage("Machine code may contain letters, digits, dot, dash and underscore only.");
-    }
-}
-
 public sealed class CreateProductRequestValidator : AbstractValidator<CreateProductRequest>
 {
     public CreateProductRequestValidator()

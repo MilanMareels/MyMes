@@ -8,21 +8,10 @@ WORKDIR /src
 # Project files first. They change far less often than source, so the restore layer survives
 # most rebuilds and the slowest step runs only when a dependency actually moves.
 COPY global.json Directory.Build.props Directory.Packages.props ./
-COPY src/Core/MyMES.Abstractions/MyMES.Abstractions.csproj src/Core/MyMES.Abstractions/
 COPY src/Core/MyMES.Domain/MyMES.Domain.csproj src/Core/MyMES.Domain/
-COPY src/Core/MyMES.Contracts/MyMES.Contracts.csproj src/Core/MyMES.Contracts/
 COPY src/Core/MyMES.Application/MyMES.Application.csproj src/Core/MyMES.Application/
-COPY src/BuildingBlocks/MyMES.EventBus/MyMES.EventBus.csproj src/BuildingBlocks/MyMES.EventBus/
 COPY src/BuildingBlocks/MyMES.PluginSystem/MyMES.PluginSystem.csproj src/BuildingBlocks/MyMES.PluginSystem/
-COPY src/BuildingBlocks/MyMES.Localization/MyMES.Localization.csproj src/BuildingBlocks/MyMES.Localization/
-COPY src/Infrastructure/MyMES.Identity/MyMES.Identity.csproj src/Infrastructure/MyMES.Identity/
-COPY src/Infrastructure/MyMES.Persistence/MyMES.Persistence.csproj src/Infrastructure/MyMES.Persistence/
 COPY src/Infrastructure/MyMES.Infrastructure/MyMES.Infrastructure.csproj src/Infrastructure/MyMES.Infrastructure/
-COPY src/Infrastructure/MyMES.Messaging/MyMES.Messaging.csproj src/Infrastructure/MyMES.Messaging/
-COPY src/Modules/MyMES.Modules.Machines/MyMES.Modules.Machines.csproj src/Modules/MyMES.Modules.Machines/
-COPY src/Modules/MyMES.Modules.Production/MyMES.Modules.Production.csproj src/Modules/MyMES.Modules.Production/
-COPY src/Modules/MyMES.Modules.Quality/MyMES.Modules.Quality.csproj src/Modules/MyMES.Modules.Quality/
-COPY src/Modules/MyMES.Modules.Inventory/MyMES.Modules.Inventory.csproj src/Modules/MyMES.Modules.Inventory/
 COPY extensions/MyMES.Extensions.Sample/MyMES.Extensions.Sample.csproj extensions/MyMES.Extensions.Sample/
 COPY src/Host/MyMES.Api/MyMES.Api.csproj src/Host/MyMES.Api/
 

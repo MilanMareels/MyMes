@@ -28,9 +28,6 @@ $api = Join-Path $root 'src\Host\MyMES.Api'
 
 Push-Location $root
 try {
-    Write-Host "Restoring tools..." -ForegroundColor Cyan
-    dotnet tool restore
-
     Write-Host "Setting the connection string..." -ForegroundColor Cyan
     dotnet user-secrets --project $api set "ConnectionStrings:MyMes" $ConnectionString | Out-Null
 
@@ -54,18 +51,14 @@ try {
         Write-Host "No administrator supplied; none will be created. Pass -AdminUserName, -AdminEmail and -AdminPassword to create one." -ForegroundColor Yellow
     }
 
-    if (-not $SkipMigrations) {
-        Write-Host "Applying migrations..." -ForegroundColor Cyan
-        dotnet ef database update `
-            --project src/Infrastructure/MyMES.Persistence `
-            --startup-project src/Host/MyMES.Api
-    }
+    # Migrations are applied automatically on start-up in Development (Database:AutoMigrate).
+    # Use the Package Manager Console (Add-Migration / Update-Database) to create or apply them
+    # manually.
 
     Write-Host ""
     Write-Host "Ready. Start the hosts with:" -ForegroundColor Green
     Write-Host "  dotnet run --project src/Host/MyMES.Api"
     Write-Host "  dotnet run --project src/Host/MyMES.Web"
-    Write-Host "  dotnet run --project src/Host/MyMES.MachineService"
 }
 finally {
     Pop-Location

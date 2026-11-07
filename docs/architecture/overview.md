@@ -1,108 +1,69 @@
 # Architecture overview
 
-MyMES is a **modular monolith** with Clean Architecture layering. One process, one database, one
-deployment unit, divided internally so that pieces can be pulled out later without a rewrite.
-
-## Why a modular monolith
-
-A MES is one transactional story. An order releases, a machine runs it, quantities are booked,
-stock moves and an inspection is raised, and a plant manager expects those to agree with each
-other. Splitting that across services at the start buys network calls, eventual consistency and
-distributed debugging in exchange for independence nobody needs yet.
-
-The monolith keeps the transaction, and the module boundaries keep the option. Every rule that a
-service boundary would enforce physically is enforced here by a test instead:
-
-- modules do not reference each other
-- modules reach data through the application layer, never a `DbContext`
-- the UI reaches data only over HTTP
-
-When a module genuinely needs its own release cadence or its own database, the seam already
-exists: give it its own `DbContext` on its own schema, move the module behind an HTTP contract,
-and the event bus registration changes from in-process to a broker.
+MyMES is a layered application on .NET 10. One process, one database, one deployment unit, divided
+into six projects so the dependencies always point inward.
 
 ## The layers
 
 ### MyMES.Domain
 
-Entities, value objects, enums, domain events and the invariants that protect them. **References
-nothing** — not EF Core, not ASP.NET, not another MyMES project.
+Entities (plain POCOs), enums and domain events. **References nothing** — not EF Core, not
+ASP.NET, not another MyMES project.
 
-Business rules live here, not in services. `ProductionOrder` decides whether it may start;
-`Product` decides that only one revision can be released at a time. A service that reached into
-these objects to set a status would be the beginning of an anemic model, and the architecture
-tests do not prevent that — code review does. The aggregates are deliberately shaped so the
-wrong thing is hard to write: setters are private and every transition is a named method.
-
-### MyMES.Contracts
-
-The public wire format: DTOs and their own enums. No dependency on the domain.
-
-The duplication is the point. `MachineStatus` and `MachineStatusDto` have the same members today,
-and the day the domain gains an internal state that clients should not see, the contract does not
-move. `MappingTests` iterates both enums in both directions, so the two cannot drift silently.
+Entities carry no business methods: `Product` and `ProductionOrder` are data objects
+with `get; set;` properties. The business rules live in the services.
 
 ### MyMES.Application
 
-Use cases, validation and mapping. Defines `IApplicationDbContext`, which exposes `DbSet<T>` and
-`SaveChangesAsync`.
+Use cases, validation, DTOs and mapping. Defines `IRepository<T>`, the data-access contract that
+services use; Infrastructure implements it with EF Core.
 
-This is the one place Clean Architecture purity is traded away deliberately: the application layer
-references EF Core. The alternative, a generic `IRepository<T>`, hides `Include`, projection and
-`AsNoTracking` behind an abstraction that can only ever be a worse version of what EF already
-offers. The boundary that actually protects the business rules is the domain's, and that one is
-absolute.
+Services inject `IRepository<T>` (for example `IRepository<Product>`) and never see the DbContext.
+The repository is the only place that exposes EF Core's queryable, so a field or a query change
+stays in one file. The **domain** stays framework-free, which is the boundary that protects the
+rules.
 
 Services return `Result` / `Result<T>` for expected failures (duplicate code, missing record,
-illegal transition) and let genuine faults throw. The host maps the first to a status code and
-the second to a 500.
+illegal transition) and let genuine faults throw. The controllers map the first to a status code
+and the second to a 500.
 
-### MyMES.Persistence
+### MyMES.Infrastructure
 
-`MyMesDbContext`, one `IEntityTypeConfiguration<T>` per entity, and the migrations.
+`MyMesDbContext` (with its entity configurations and migrations), ASP.NET Core Identity, the
+realtime messaging defaults and the composition root that wires them together.
 
-`SaveChangesAsync` does three things in order: stamp the audit columns, save, then publish the
-domain events raised during the change. Publishing *after* the commit means a handler never
-reacts to work that is then rolled back. The cost is that a handler failing afterwards cannot
-undo the commit, which is why handlers log and continue rather than throw.
+`SaveChangesAsync` stamps the audit columns, saves, then publishes the domain events raised during
+the change. Publishing *after* the commit means a handler never reacts to work that is then rolled
+back.
 
-Two schemas: `mes` for business tables, `identity` for authentication. One migration history,
-and a clean split to build on if a module ever leaves.
+Two schemas: `mes` for business tables, `identity` for authentication. One migration history.
 
-### MyMES.Identity
+### MyMES.Api
 
-`ApplicationUser`, `ApplicationRole`, the role/permission table and the seeder.
+ASP.NET Core MVC controllers, JWT, Swagger, SignalR, health checks and the composition root
+(`Program.cs`).
 
-Authorisation is permission-based. An endpoint says
-`RequireAuthorization(MesPermissions.MachinesWrite)` and never names a role. Roles hold
-permissions; a module or plugin can register a new permission at start-up and the host turns it
-into a policy automatically. Changing who may do what is then configuration, not an edit to
-endpoint code.
+Controllers are thin: they validate the route, call a service and translate the `Result` into an
+HTTP response. They never touch the database.
 
-### Modules
+### MyMES.Web
 
-Four: Machines, Production, Quality, Inventory. Each owns a slice of the API surface and
-registers its own services and event handlers.
+Blazor Server. References `MyMES.Application` for DTOs and talks HTTP to the API — it has no
+database access at all.
 
-Quality and Inventory are the interesting ones for the architecture, even though they are small.
-Neither references the Production module. Both react to a domain event raised by a production
-order — a completed order raises a final inspection, a booking posts a stock receipt — which is
-exactly the communication pattern the rest of the system is expected to follow.
+### MyMES.PluginSystem
 
-### Hosts
-
-- **MyMES.Api** — the only process that touches the database. Minimal APIs, JWT, Swagger,
-  SignalR, health checks, module registration.
-- **MyMES.Web** — Blazor Server. References `MyMES.Contracts` and nothing else from the core.
-- **MyMES.MachineService** — a worker. Just another API client, with its own service account.
+The extension system: plugin discovery, `ReplaceService`, `DecorateService`, `ExtendWith` and the
+`Result → HTTP` mapping. Third-party code can replace or wrap a service without forking the
+platform.
 
 ## Cross-cutting
 
 ### Errors
 
 One shape everywhere: RFC 7807 `ProblemDetails`, with a machine-readable `code` extension that
-clients branch on instead of parsing the message. `ResultExtensions.ToProblem` maps
-`ErrorKind` to a status code, so a module's endpoint and a host's endpoint fail identically.
+clients branch on instead of parsing the message. `ApiControllerBase.ToOk` maps `ErrorKind` to a
+status code, so every controller fails identically.
 
 Outside Development the 500 detail is withheld: exception text leaks schema, paths and library
 versions. The trace id stays, so a report can be correlated with the log.
@@ -110,19 +71,17 @@ versions. The trace id stays, so a report can be correlated with the log.
 ### Logging
 
 Serilog, structured. Messages use named placeholders, never interpolation, so the properties stay
-queryable. The console template is pinned to the invariant culture; a log whose timestamps depend
-on the server's locale is a log that cannot be compared across machines.
+queryable.
 
 ### Real-time
 
-`IRealtimeNotifier` lives in `MyMES.Messaging` and knows nothing about SignalR. The API supplies
-the SignalR implementation; the worker and the test suite get a no-op. That is the same "replace
-a default implementation" seam extensions use.
+`IRealtimeNotifier` knows nothing about SignalR. The API supplies the SignalR implementation; other
+hosts get a no-op.
 
 ### Time
 
 Nothing reads `DateTime.UtcNow` directly except `SystemDateTimeProvider`. Everything else takes
-`IDateTimeProvider`, which is what lets the domain tests pin a clock and assert on timestamps.
+`IDateTimeProvider`, so time can be pinned and asserted on.
 
 ## Known gaps
 

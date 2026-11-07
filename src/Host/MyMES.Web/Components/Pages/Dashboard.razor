@@ -34,15 +34,6 @@ else if (_summary is null)
 else
 {
     <div class="kpi-grid">
-        <KpiCard Label="Total machines"
-                 Value="@_summary.TotalMachines.ToString()"
-                 Tone="neutral" />
-
-        <KpiCard Label="Running machines"
-                 Value="@($"{_summary.RunningMachines}/{_summary.TotalMachines}")"
-                 Tone="@(_summary.RunningMachines > 0 ? "good" : "warn")"
-                 Hint="@(_summary.FaultedMachines > 0 ? $"{_summary.FaultedMachines} faulted" : null)" />
-
         <KpiCard Label="Active production orders"
                  Value="@_summary.ActiveProductionOrders.ToString()"
                  Tone="neutral" />
@@ -62,8 +53,6 @@ else
             <dl class="kv">
                 <dt>Active products</dt>
                 <dd>@_summary.ActiveProducts</dd>
-                <dt>Faulted machines</dt>
-                <dd class="@(_summary.FaultedMachines > 0 ? "tone-bad" : "")">@_summary.FaultedMachines</dd>
                 <dt>Figures generated</dt>
                 <dd>@_summary.GeneratedAtUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm:ss")</dd>
             </dl>
