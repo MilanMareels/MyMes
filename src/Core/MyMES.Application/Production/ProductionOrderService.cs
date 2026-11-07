@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MyMES.Abstractions.Results;
 using MyMES.Abstractions.Time;
-using MyMES.Application.Abstractions;
+using MyMES.Application.Data;
 using MyMES.Application.Mapping;
 using MyMES.Contracts.Common;
 using MyMES.Contracts.Production;
@@ -14,7 +14,8 @@ namespace MyMES.Application.Production;
 
 /// <inheritdoc cref="IProductionOrderService"/>
 public sealed class ProductionOrderService(
-    IApplicationDbContext db,
+    IRepository<ProductionOrder> orders,
+    IRepository<ProductVersion> versions,
     IDateTimeProvider clock,
     IEventBus eventBus,
     ILogger<ProductionOrderService> logger) : IProductionOrderService
@@ -26,7 +27,7 @@ public sealed class ProductionOrderService(
         CancellationToken cancellationToken = default)
     {
         var paging = page.Normalised();
-        var query = db.ProductionOrders.AsNoTracking();
+        var query = orders.Query().AsNoTracking();
 
         if (status is { } wanted)
         {
@@ -51,7 +52,7 @@ public sealed class ProductionOrderService(
             .Select(o => new
             {
                 Order = o,
-                VersionNumber = db.ProductVersions
+                VersionNumber = versions.Query()
                     .Where(v => v.Id == o.ProductVersionId)
                     .Select(v => v.VersionNumber)
                     .FirstOrDefault()
@@ -68,13 +69,13 @@ public sealed class ProductionOrderService(
 
     public async Task<Result<ProductionOrderDto>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var row = await db.ProductionOrders
+        var row = await orders.Query()
             .AsNoTracking()
             .Where(o => o.Id == id)
             .Select(o => new
             {
                 Order = o,
-                VersionNumber = db.ProductVersions
+                VersionNumber = versions.Query()
                     .Where(v => v.Id == o.ProductVersionId)
                     .Select(v => v.VersionNumber)
                     .FirstOrDefault()
@@ -118,7 +119,7 @@ public sealed class ProductionOrderService(
                 "production_order.dates_invalid", "Planned end cannot be before planned start."));
         }
 
-        if (await db.ProductionOrders.AnyAsync(o => o.OrderNumber == number, cancellationToken).ConfigureAwait(false))
+        if (await orders.Query().AnyAsync(o => o.OrderNumber == number, cancellationToken).ConfigureAwait(false))
         {
             return Result.Failure<ProductionOrderDto>(Error.Conflict(
                 "production_order.number_in_use",
@@ -128,7 +129,7 @@ public sealed class ProductionOrderService(
         // A revision may only be built against once it has actually been released.
         if (request.ProductVersionId is { } versionId)
         {
-            var version = await db.ProductVersions
+            var version = await versions.Query()
                 .AsNoTracking()
                 .SingleOrDefaultAsync(v => v.Id == versionId, cancellationToken)
                 .ConfigureAwait(false);
@@ -159,8 +160,8 @@ public sealed class ProductionOrderService(
             Status = ProductionOrderStatus.Draft
         };
 
-        db.ProductionOrders.Add(order);
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        orders.Add(order);
+        await orders.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Production order {OrderNumber} created.", order.OrderNumber);
         return Result.Success(order.ToDto());
@@ -183,7 +184,7 @@ public sealed class ProductionOrderService(
 
         order.Status = ProductionOrderStatus.Released;
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await orders.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await eventBus.PublishAsync(
             new ProductionOrderReleasedEvent(order.Id, order.OrderNumber, order.ProductCode, clock.UtcNow),
             cancellationToken).ConfigureAwait(false);
@@ -209,7 +210,7 @@ public sealed class ProductionOrderService(
         order.Status = ProductionOrderStatus.InProgress;
         order.ActualStartUtc ??= clock.UtcNow;
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await orders.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await eventBus.PublishAsync(
             new ProductionOrderStartedEvent(order.Id, order.OrderNumber, clock.UtcNow),
             cancellationToken).ConfigureAwait(false);
@@ -233,7 +234,7 @@ public sealed class ProductionOrderService(
         }
 
         order.Status = ProductionOrderStatus.OnHold;
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await orders.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result.Success(order.ToDto());
     }
@@ -264,7 +265,7 @@ public sealed class ProductionOrderService(
 
         order.ProducedQuantity += request.Quantity;
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await orders.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await eventBus.PublishAsync(
             new ProductionReportedEvent(order.Id, order.OrderNumber, request.Quantity, order.ProducedQuantity, clock.UtcNow),
             cancellationToken).ConfigureAwait(false);
@@ -290,7 +291,7 @@ public sealed class ProductionOrderService(
         order.Status = ProductionOrderStatus.Completed;
         order.ActualEndUtc = clock.UtcNow;
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await orders.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await eventBus.PublishAsync(
             new ProductionOrderCompletedEvent(order.Id, order.OrderNumber, order.ProducedQuantity, clock.UtcNow),
             cancellationToken).ConfigureAwait(false);
@@ -316,12 +317,12 @@ public sealed class ProductionOrderService(
         order.Status = ProductionOrderStatus.Cancelled;
         order.ActualEndUtc = clock.UtcNow;
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await orders.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Result.Success(order.ToDto());
     }
 
     private Task<ProductionOrder?> LoadAsync(Guid id, CancellationToken cancellationToken) =>
-        db.ProductionOrders.SingleOrDefaultAsync(o => o.Id == id, cancellationToken);
+        orders.Query().SingleOrDefaultAsync(o => o.Id == id, cancellationToken);
 
     private static Error NotFound(Guid id) =>
         Error.NotFound("production_order.not_found", $"No production order with id {id}.");

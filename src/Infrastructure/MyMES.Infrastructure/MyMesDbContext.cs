@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using MyMES.Abstractions.Security;
 using MyMES.Abstractions.Time;
-using MyMES.Application.Abstractions;
 using MyMES.Domain.Common;
 using MyMES.Domain.Integrations;
 using MyMES.Domain.Personnel;
@@ -33,7 +32,7 @@ public sealed class MyMesDbContext(
     IDateTimeProvider clock,
     ICurrentUser currentUser,
     IEventBus eventBus)
-    : IdentityDbContext<ApplicationUser, ApplicationRole, string>(options), IApplicationDbContext
+    : IdentityDbContext<ApplicationUser, ApplicationRole, string>(options)
 {
     /// <summary>Schema holding the MES business tables.</summary>
     public const string MesSchema = "mes";

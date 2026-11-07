@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using MyMES.Application.Abstractions;
+using MyMES.Application.Data;
 
 namespace MyMES.Persistence;
 
@@ -29,7 +29,7 @@ public sealed class DatabaseOptions
 
 public static class DependencyInjection
 {
-    /// <summary>Registers the database context and exposes it as <see cref="IApplicationDbContext"/>.</summary>
+    /// <summary>Registers the database context and the generic repository.</summary>
     /// <exception cref="InvalidOperationException">No connection string is configured.</exception>
     public static IServiceCollection AddPersistence(
         this IServiceCollection services,
@@ -62,7 +62,7 @@ public static class DependencyInjection
                 sql.CommandTimeout(options.CommandTimeoutSeconds);
             }));
 
-        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<MyMesDbContext>());
+        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IDatabaseInitialiser, DatabaseInitialiser>();
 
         return services;

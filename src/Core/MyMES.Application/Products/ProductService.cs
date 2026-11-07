@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MyMES.Abstractions.Results;
 using MyMES.Abstractions.Time;
-using MyMES.Application.Abstractions;
+using MyMES.Application.Data;
 using MyMES.Application.Mapping;
 using MyMES.Contracts.Common;
 using MyMES.Contracts.Products;
@@ -13,7 +13,7 @@ namespace MyMES.Application.Products;
 
 /// <inheritdoc cref="IProductService"/>
 public sealed class ProductService(
-    IApplicationDbContext db,
+    IRepository<Product> products,
     IDateTimeProvider clock,
     IEventBus eventBus,
     ILogger<ProductService> logger) : IProductService
@@ -25,7 +25,7 @@ public sealed class ProductService(
         CancellationToken cancellationToken = default)
     {
         var paging = page.Normalised();
-        var query = db.Products.AsNoTracking().Include(p => p.Versions).AsQueryable();
+        var query = products.Query().AsNoTracking().Include(p => p.Versions).AsQueryable();
 
         if (activeOnly == true)
         {
@@ -67,7 +67,7 @@ public sealed class ProductService(
         CancellationToken cancellationToken = default)
     {
         var code = productCode.Trim().ToUpperInvariant();
-        var product = await db.Products
+        var product = await products.Query()
             .AsNoTracking()
             .Include(p => p.Versions)
             .SingleOrDefaultAsync(p => p.ProductCode == code, cancellationToken)
@@ -95,7 +95,7 @@ public sealed class ProductService(
             return Result.Failure<ProductDto>(Error.Validation("product.name_required", "A product needs a name."));
         }
 
-        if (await db.Products.AnyAsync(p => p.ProductCode == code, cancellationToken).ConfigureAwait(false))
+        if (await products.Query().AnyAsync(p => p.ProductCode == code, cancellationToken).ConfigureAwait(false))
         {
             return Result.Failure<ProductDto>(Error.Conflict(
                 "product.code_in_use",
@@ -117,8 +117,8 @@ public sealed class ProductService(
             AddDraftVersion(product, request.InitialVersionNumber, notes: null);
         }
 
-        db.Products.Add(product);
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        products.Add(product);
+        await products.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Product {ProductCode} created with id {ProductId}.", product.ProductCode, product.Id);
         return Result.Success(product.ToDto());
@@ -148,7 +148,7 @@ public sealed class ProductService(
             product.UnitOfMeasure = request.UnitOfMeasure.Trim();
         }
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await products.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Result.Success(product.ToDto());
     }
 
@@ -186,7 +186,7 @@ public sealed class ProductService(
         }
 
         var version = AddDraftVersion(product, versionNumber, request.Notes);
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await products.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation(
             "Revision {VersionNumber} added to product {ProductCode}.",
@@ -241,7 +241,7 @@ public sealed class ProductService(
         version.ReleasedAtUtc = clock.UtcNow;
         version.ObsoletedAtUtc = null;
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await products.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         await eventBus.PublishAsync(new ProductVersionReleasedEvent(
             product.Id,
@@ -276,7 +276,7 @@ public sealed class ProductService(
         version.Status = ProductVersionStatus.Obsolete;
         version.ObsoletedAtUtc = clock.UtcNow;
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await products.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Result.Success(product.ToDto());
     }
 
@@ -298,7 +298,7 @@ public sealed class ProductService(
                 released.ObsoletedAtUtc = clock.UtcNow;
             }
 
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await products.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
         return Result.Success(product.ToDto());
@@ -328,7 +328,7 @@ public sealed class ProductService(
                 versionToRestore.ObsoletedAtUtc = null;
             }
 
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await products.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
         return Result.Success(product.ToDto());
@@ -351,7 +351,7 @@ public sealed class ProductService(
     /// <summary>Loads a product with its revisions.</summary>
     private Task<Product?> LoadAsync(Guid id, bool tracking, CancellationToken cancellationToken)
     {
-        var query = tracking ? db.Products : db.Products.AsNoTracking();
+        var query = tracking ? products.Query() : products.Query().AsNoTracking();
         return query.Include(p => p.Versions).SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
 

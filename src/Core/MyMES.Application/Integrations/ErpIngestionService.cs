@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MyMES.Abstractions.Results;
 using MyMES.Abstractions.Time;
-using MyMES.Application.Abstractions;
+using MyMES.Application.Data;
 using MyMES.Application.Mapping;
 using MyMES.Application.Products;
 using MyMES.Contracts.Integrations;
@@ -13,17 +13,23 @@ using MyMES.Domain.Integrations;
 namespace MyMES.Application.Integrations;
 
 /// <inheritdoc cref="IErpIngestionService"/>
-public sealed class ErpIngestionService(IApplicationDbContext db,IProductService products,IDateTimeProvider clock, ILogger<ErpIngestionService> logger) : IErpIngestionService
+public sealed class ErpIngestionService(
+    IRepository<IncomingErpMessage> messages,
+    IProductService products,
+    IDateTimeProvider clock,
+    ILogger<ErpIngestionService> logger) : IErpIngestionService
 {
     public async Task<Result<IncomingErpMessageDto>> ReceiveAsync(ReceiveErpProductRequest request, CancellationToken ct = default)
     {
-        var exists = await db.IncomingErpMessages
+        var exists = await messages.Query()
             .AnyAsync(m => m.ExternalReference == request.ExternalReference, ct)
             .ConfigureAwait(false);
 
         if (exists)
         {
-            return Result.Failure<IncomingErpMessageDto>(Error.Conflict("erp.duplicate_reference", $"A message with reference {request.ExternalReference} already exists."));
+            return Result.Failure<IncomingErpMessageDto>(Error.Conflict(
+                "erp.duplicate_reference",
+                $"A message with reference {request.ExternalReference} already exists."));
         }
 
         var message = IncomingErpMessage.Create(
@@ -32,8 +38,8 @@ public sealed class ErpIngestionService(IApplicationDbContext db,IProductService
             request.Payload,
             clock.UtcNow);
 
-        db.IncomingErpMessages.Add(message);
-        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        messages.Add(message);
+        await messages.SaveChangesAsync(ct).ConfigureAwait(false);
 
         logger.LogInformation("ERP message {Reference} received.", message.ExternalReference);
         return Result.Success(message.ToDto());
@@ -43,7 +49,7 @@ public sealed class ErpIngestionService(IApplicationDbContext db,IProductService
         IncomingMessageStatusDto? status = null,
         CancellationToken ct = default)
     {
-        var query = db.IncomingErpMessages.AsNoTracking();
+        var query = messages.Query().AsNoTracking();
 
         if (status is { } wanted)
         {
@@ -62,7 +68,7 @@ public sealed class ErpIngestionService(IApplicationDbContext db,IProductService
 
     public async Task<int> ProcessPendingAsync(CancellationToken ct = default)
     {
-        var pending = await db.IncomingErpMessages
+        var pending = await messages.Query()
             .Where(m => m.Status == IncomingMessageStatus.New)
             .OrderBy(m => m.ReceivedAtUtc)
             .ToListAsync(ct)
@@ -102,7 +108,7 @@ public sealed class ErpIngestionService(IApplicationDbContext db,IProductService
             }
         }
 
-        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        await messages.SaveChangesAsync(ct).ConfigureAwait(false);
         logger.LogInformation("ERP: {Count} message(s) processed.", pending.Count);
 
         return pending.Count;

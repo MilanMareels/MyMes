@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyMES.Abstractions.Security;
-using MyMES.Application.Abstractions;
+using MyMES.Application.Data;
 using MyMES.Contracts.Identity;
 using MyMES.Domain.Personnel;
 using MyMES.Identity;
@@ -18,7 +18,7 @@ namespace MyMES.Api.Controllers;
 [Route("api/v1/users")]
 public sealed class UsersController(
     UserManager<ApplicationUser> userManager,
-    IApplicationDbContext db) : ControllerBase
+    IRepository<Employee> employees) : ControllerBase
 {
     [HttpGet]
     [Authorize(MesPermissions.UsersRead)]
@@ -30,7 +30,7 @@ public sealed class UsersController(
             .Take(500)
             .ToListAsync(cancellationToken);
 
-        var employeeNumbers = await db.Employees
+        var employeeNumbers = await employees.Query()
             .AsNoTracking()
             .Where(e => e.IdentityUserId != null)
             .ToDictionaryAsync(e => e.IdentityUserId!, e => e.EmployeeNumber, cancellationToken);
@@ -110,8 +110,8 @@ public sealed class UsersController(
                 request.LastName ?? request.UserName);
 
             employee.LinkIdentityUser(user.Id);
-            db.Employees.Add(employee);
-            await db.SaveChangesAsync(cancellationToken);
+            employees.Add(employee);
+            await employees.SaveChangesAsync(cancellationToken);
 
             user.EmployeeId = employee.Id;
             await userManager.UpdateAsync(user);
