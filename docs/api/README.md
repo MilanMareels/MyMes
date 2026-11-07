@@ -25,7 +25,7 @@ SignalR cannot set headers on a WebSocket handshake, so the hub accepts the toke
 ## Versioning
 
 The version is in the path. A URL that names its version is self-describing in logs, in a proxy
-and in Swagger. Version 2 becomes a sibling group mapped from the same modules, so both can be
+and in Swagger. Version 2 becomes a sibling route mapped from the same controllers, so both can be
 served at once during a migration.
 
 ## Errors
@@ -117,7 +117,7 @@ different people.
 | | |
 |---|---|
 | `GET /dashboard/summary` | KPI figures; any signed-in user |
-| `GET /platform` | Which modules and plugins this instance loaded |
+| `GET /platform` | Which plugins this instance loaded |
 | `GET /quality/pending-inspections` | |
 | `GET /inventory/movements` | |
 

@@ -1,63 +1,69 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using MyMES.Abstractions.Security;
-using MyMES.Abstractions.Time;
-using MyMES.Identity;
-using MyMES.Messaging;
-using MyMES.Persistence;
+using MyMES.Application.Abstractions;
 
-namespace MyMES.Infrastructure;
+namespace MyMES.Persistence;
 
-/// <summary>The system clock. The only place <see cref="DateTime.UtcNow"/> is read.</summary>
-public sealed class SystemDateTimeProvider : IDateTimeProvider
+/// <summary>Options controlling how the database is reached and migrated.</summary>
+public sealed class DatabaseOptions
 {
-    public DateTime UtcNow => DateTime.UtcNow;
-}
+    public const string SectionName = "Database";
 
-/// <summary>
-/// The "no user" principal, used by background services and the migration tooling.
-/// </summary>
-/// <remarks>
-/// Registered as the default so nothing has to null-check. A host with real requests replaces it
-/// with one that reads the HTTP context.
-/// </remarks>
-public sealed class SystemCurrentUser : ICurrentUser
-{
-    public string? UserId => null;
+    /// <summary>
+    /// Applies pending migrations during start-up.
+    /// </summary>
+    /// <remarks>
+    /// Convenient on a developer machine and in the Docker compose stack. Leave it off for a real
+    /// deployment, where migrations belong in a controlled release step against a backed-up
+    /// database rather than in whichever instance happens to start first.
+    /// </remarks>
+    public bool AutoMigrate { get; set; }
 
-    public string? UserName => "system";
+    /// <summary>How often to retry a transient SQL failure before giving up.</summary>
+    public int MaxRetryCount { get; set; } = 5;
 
-    public bool IsAuthenticated => false;
-
-    public bool IsInRole(string role) => false;
+    /// <summary>Seconds a command may run before timing out.</summary>
+    public int CommandTimeoutSeconds { get; set; } = 30;
 }
 
 public static class DependencyInjection
 {
-    /// <summary>
-    /// Registers the technical services every host needs: clock, current user, database,
-    /// identity building blocks and the messaging defaults.
-    /// </summary>
-    /// <remarks>
-    /// Deliberately additive and idempotent where it can be. Hosts layer their own registrations
-    /// on top: the API replaces <see cref="ICurrentUser"/> with an HTTP-aware implementation and
-    /// <see cref="IRealtimeNotifier"/> with the SignalR one.
-    /// </remarks>
-    public static IServiceCollection AddInfrastructure(
+    /// <summary>Registers the database context and exposes it as <see cref="IApplicationDbContext"/>.</summary>
+    /// <exception cref="InvalidOperationException">No connection string is configured.</exception>
+    public static IServiceCollection AddPersistence(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.TryAddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
-        services.TryAddScoped<ICurrentUser, SystemCurrentUser>();
+        var connectionString = configuration.GetConnectionString("MyMes")
+            ?? throw new InvalidOperationException(
+                "Connection string 'MyMes' is not configured. Set ConnectionStrings__MyMes in the "
+                + "environment, or use user-secrets during development.");
 
-        services.AddPersistence(configuration);
+        services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
+        var options = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>()
+            ?? new DatabaseOptions();
 
-        services.Configure<IdentityBootstrapOptions>(
-            configuration.GetSection(IdentityBootstrapOptions.SectionName));
-        services.TryAddScoped<IIdentitySeeder, IdentitySeeder>();
+        services.AddDbContext<MyMesDbContext>(builder =>
+            builder.UseSqlServer(connectionString, sql =>
+            {
+                // Migrations live next to the context, in this assembly.
+                sql.MigrationsAssembly(typeof(MyMesDbContext).Assembly.FullName);
 
-        services.AddMessagingDefaults();
+                // Keeps the history table out of dbo and beside the tables it describes.
+                sql.MigrationsHistoryTable("__EFMigrationsHistory", MyMesDbContext.MesSchema);
+
+                // SQL Server in a container restarts and fails over; transient faults are normal.
+                sql.EnableRetryOnFailure(
+                    options.MaxRetryCount,
+                    TimeSpan.FromSeconds(10),
+                    errorNumbersToAdd: null);
+
+                sql.CommandTimeout(options.CommandTimeoutSeconds);
+            }));
+
+        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<MyMesDbContext>());
+        services.AddScoped<IDatabaseInitialiser, DatabaseInitialiser>();
 
         return services;
     }

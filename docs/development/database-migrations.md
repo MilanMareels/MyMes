@@ -8,7 +8,7 @@ Set the two dropdowns in the console before running any command:
 
 | Dropdown | Project | Why |
 |---|---|---|
-| Default project | `MyMES.Persistence` | Where the `DbContext` and the migrations live |
+| Default project | `MyMES.Infrastructure` | Where the `DbContext` and the migrations live |
 | Startup project | `MyMES.Api` | Where the configuration and the service registrations live |
 
 ## Creating a migration
@@ -17,7 +17,7 @@ Set the two dropdowns in the console before running any command:
 Add-Migration AddMaintenanceSchedule
 ```
 
-The files land in `src/Infrastructure/MyMES.Persistence/Migrations`. Read the generated `Up` and
+The files land in `src/Infrastructure/MyMES.Infrastructure/Migrations`. Read the generated `Up` and
 `Down` before committing. EF is good, not clairvoyant: a rename usually comes out as a drop and
 an add, which silently throws the data away.
 

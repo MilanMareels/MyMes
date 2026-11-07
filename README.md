@@ -1,12 +1,11 @@
 # MyMES
 
-A Manufacturing Execution System built as a modular monolith on .NET 10, with Clean Architecture
-boundaries that are enforced by the layering rules rather than by convention.
+A Manufacturing Execution System built on .NET 10, layered the simple way:
+**Controller → Service → Data access**.
 
 This is a **foundation**: enough real functionality to prove the architecture works end to end,
 and nothing speculative on top of it. Machines, production orders and product revisions are fully
-implemented; quality and inventory are working module scaffolding that demonstrates how a module
-reacts to the rest of the system without depending on it.
+implemented, together with JWT authentication and a Blazor front end.
 
 ---
 
@@ -15,7 +14,7 @@ reacts to the rest of the system without depending on it.
 | | |
 |---|---|
 | Runtime | .NET 10, C# with nullable reference types |
-| API | ASP.NET Core minimal APIs, Swagger/OpenAPI, SignalR, API versioning |
+| API | ASP.NET Core MVC controllers, Swagger/OpenAPI, SignalR, API versioning |
 | Front end | Blazor Web App, Interactive Server rendering |
 | Data | Entity Framework Core 10, Microsoft SQL Server 2022 |
 | Identity | ASP.NET Core Identity, JWT bearer tokens |
@@ -30,44 +29,30 @@ version of its own.
 ## Architecture at a glance
 
 ```
-          ┌──────────────┐     HTTP      ┌──────────────┐
-          │  MyMES.Web   │ ────────────▶ │  MyMES.Api   │
-          │ Blazor Server│               │ minimal APIs │
-          └──────────────┘               └──────┬───────┘
-                                                │
-          ┌──────────────────┐   HTTP           │
-          │MyMES.MachineService│ ──────────────▶│
-          │   worker service   │                │
-          └──────────────────┘                  ▼
-                                   ┌────────────────────────┐
-                                   │  Modules (4)           │
-                                   │  Machines / Production │
-                                   │  Quality / Inventory   │
-                                   └───────────┬────────────┘
-                                               ▼
-                                   ┌────────────────────────┐
-                                   │  MyMES.Application     │ use cases
-                                   └───────────┬────────────┘
-                                               ▼
-                                   ┌────────────────────────┐
-                                   │  MyMES.Domain          │ no framework deps
-                                   └────────────────────────┘
-                                               ▲
-                                   ┌───────────┴────────────┐
-                                   │  MyMES.Persistence     │ EF Core, SQL Server
-                                   │  MyMES.Identity        │
-                                   └────────────────────────┘
+  ┌──────────────┐     HTTP      ┌──────────────┐
+  │  MyMES.Web   │ ────────────▶ │  MyMES.Api   │   MVC controllers
+  │ Blazor Server│               └──────┬───────┘
+  └──────────────┘                      ▼
+                          ┌────────────────────────┐
+                          │  MyMES.Application     │   services (business logic)
+                          └───────────┬────────────┘
+                                      ▼
+                          ┌────────────────────────┐
+                          │  MyMES.Domain          │   entities (plain POCOs)
+                          └────────────────────────┘
+                                      ▲
+                          ┌───────────┴────────────┐
+                          │  MyMES.Infrastructure  │   DbContext + repositories
+                          └────────────────────────┘
 ```
 
 Three boundaries matter more than the rest:
 
 1. **The domain references nothing.** Not EF Core, not ASP.NET, not another MyMES project.
-2. **The Blazor application cannot reach the database.** It references `MyMES.Contracts` and
-   talks HTTP. Authorisation is therefore enforced where it counts, in the API.
-3. **Modules do not reference each other.** They communicate through contracts and domain events.
-
-See [docs/architecture/overview.md](docs/architecture/overview.md) and
-[docs/architecture/dependency-rules.md](docs/architecture/dependency-rules.md).
+2. **The Blazor application cannot reach the database.** It references `MyMES.Application` for
+   DTOs and talks HTTP. Authorisation is therefore enforced where it counts, in the API.
+3. **Controllers know nothing about the database.** They call services; services use
+   `IApplicationDbContext`; only Infrastructure knows how to persist.
 
 ---
 
@@ -84,28 +69,15 @@ MyMES/
 │
 ├── src/
 │   ├── Core/
-│   │   ├── MyMES.Abstractions     module contract, clock, current user, Result, permissions
-│   │   ├── MyMES.Domain           entities, invariants, domain events. No dependencies.
-│   │   ├── MyMES.Contracts        DTOs and wire enums shared by API and UI
-│   │   └── MyMES.Application      use cases, validation, IApplicationDbContext, mapping
+│   │   ├── MyMES.Domain/           entities (POCOs), enums, domain events. No dependencies.
+│   │   └── MyMES.Application/      services (business logic), DTOs, Result, validation, mapping
+│   ├── BuildingBlocks/
+│   │   └── MyMES.PluginSystem/     plugin discovery, replace/decorate/extend, Result→HTTP
 │   ├── Infrastructure/
-│   │   ├── MyMES.Identity         ApplicationUser, roles, permission catalogue, seeding
-│   │   ├── MyMES.Persistence      DbContext, entity configurations, migrations
-│   │   ├── MyMES.Infrastructure   composition root: clock, current user, database, messaging
-│   │   └── MyMES.Messaging        integration events, IRealtimeNotifier
-│   ├── Host/
-│   │   ├── MyMES.Api              minimal APIs, JWT, Swagger, SignalR hub, health
-│   │   ├── MyMES.Web              Blazor Server front end
-│   │   └── MyMES.MachineService   worker polling machine drivers
-│   ├── Modules/
-│   │   ├── MyMES.Modules.Machines      /machines
-│   │   ├── MyMES.Modules.Production    /production-orders, /products
-│   │   ├── MyMES.Modules.Quality       reacts to completed orders
-│   │   └── MyMES.Modules.Inventory     reacts to production bookings
-│   └── BuildingBlocks/
-│       ├── MyMES.EventBus         in-process publish/subscribe
-│       ├── MyMES.PluginSystem     module discovery, replace/decorate/extend, Result→HTTP
-│       └── MyMES.Localization     UI string catalogue
+│   │   └── MyMES.Infrastructure/   DbContext, Identity, migrations, messaging, composition root
+│   └── Host/
+│       ├── MyMES.Api/              MVC controllers, JWT, Swagger, SignalR hub, health
+│       └── MyMES.Web/              Blazor Server front end
 │
 ├── extensions/
 │   └── MyMES.Extensions.Sample    worked example of a third-party extension
@@ -116,6 +88,9 @@ MyMES/
 │   └── scripts/
 └── docs/
 ```
+
+**Six projects.** When you add a field you touch three files at most: the entity, the service and
+the DTO — not a chain of layers.
 
 ---
 
@@ -221,7 +196,7 @@ Use `127.0.0.1`, **not** `localhost` — on some machines `localhost` resolves t
 maps only IPv4, which makes the connection time out. Use the same `MSSQL_SA_PASSWORD` as in `.env`:
 
 ```bash
-dotnet user-secrets --project src/Host/MyMES.Api set "ConnectionStrings:MyMes" "Server=127.0.0.1,1433;Database=MyMES;User Id=sa;Password=YOUR_MSSQL_SA_PASSWORD;TrustServerCertificate=True;MultipleActiveResultSets=True"
+dotnet user-secrets --project src/MyMES.Api set "ConnectionStrings:MyMes" "Server=127.0.0.1,1433;Database=MyMES;User Id=sa;Password=YOUR_MSSQL_SA_PASSWORD;TrustServerCertificate=True;MultipleActiveResultSets=True"
 ```
 
 > This user-secret **overrides** the `ConnectionStrings:MyMes` in `appsettings.Development.json`
@@ -236,42 +211,37 @@ administrator (for example from a previous Docker run), these values are ignored
 with that existing account.
 
 ```bash
-dotnet user-secrets --project src/Host/MyMES.Api set "Identity:Bootstrap:AdministratorUserName" "admin"
+dotnet user-secrets --project src/MyMES.Api set "Identity:Bootstrap:AdministratorUserName" "admin"
 ```
 
 ```bash
-dotnet user-secrets --project src/Host/MyMES.Api set "Identity:Bootstrap:AdministratorEmail" "admin@example.com"
+dotnet user-secrets --project src/MyMES.Api set "Identity:Bootstrap:AdministratorEmail" "admin@example.com"
 ```
 
 ```bash
-dotnet user-secrets --project src/Host/MyMES.Api set "Identity:Bootstrap:AdministratorPassword" "Choose-A-Strong-One-1"
+dotnet user-secrets --project src/MyMES.Api set "Identity:Bootstrap:AdministratorPassword" "Choose-A-Strong-One-1"
 ```
 
 Also set a signing key, or the API mints a throwaway one per process in Development and every
 token dies on restart:
 
 ```bash
-dotnet user-secrets --project src/Host/MyMES.Api set "Jwt:Key" "at-least-32-characters-of-random-data-here"
+dotnet user-secrets --project src/MyMES.Api set "Jwt:Key" "at-least-32-characters-of-random-data-here"
 ```
 
-### 4. Start the three hosts
+### 4. Start the two hosts
 
 In Visual Studio: right-click the solution → **Configure Startup Projects…** → **Multiple startup
-projects**, and set `MyMES.Api`, `MyMES.Web` and `MyMES.MachineService` to **Start** (API first).
-Then press **F5**.
+projects**, and set `MyMES.Api` and `MyMES.Web` to **Start** (API first). Then press **F5**.
 
 Or from the command line:
 
 ```bash
-dotnet run --project src/Host/MyMES.Api
+dotnet run --project src/MyMES.Api
 ```
 
 ```bash
-dotnet run --project src/Host/MyMES.Web
-```
-
-```bash
-dotnet run --project src/Host/MyMES.MachineService
+dotnet run --project src/MyMES.Web
 ```
 
 The ports are the same as in the Docker quick start. The API applies migrations itself on start-up
@@ -283,7 +253,7 @@ The ports are the same as in the Docker quick start. The API applies migrations 
 
 Migrations are managed with Visual Studio's **Package Manager Console** (Tools → NuGet Package
 Manager → Package Manager Console). Set the two dropdowns to **Default project** =
-`MyMES.Persistence` and **Startup project** = `MyMES.Api`, then:
+`MyMES.Infrastructure` and **Startup project** = `MyMES.Api`, then:
 
 Create one:
 
@@ -316,8 +286,8 @@ migration can ever be applied to that database. More in
   authentication cookie; a delegating handler attaches it to every API call. The UI therefore
   always acts on behalf of the signed-in user.
 - Endpoints authorise against a **permission**, never a role:
-  `RequireAuthorization(MesPermissions.MachinesWrite)`. Roles hold permissions, and the mapping
-  lives in `MesRoles.DefaultGrants`.
+  `[Authorize(MesPermissions.MachinesWrite)]`. Roles hold permissions, and the mapping lives in
+  `MesRoles.DefaultGrants`.
 - Roles shipped: Administrator, Supervisor, Operator, Maintenance, Quality, Planner. They are
   seeded idempotently on every start-up.
 - A fallback policy requires an authenticated user, so anonymous access must be opted into per
@@ -325,28 +295,16 @@ migration can ever be applied to that database. More in
 
 ---
 
-## How to add a new module
+## How to add a feature
 
-1. Create `src/Modules/MyMES.Modules.<Name>` referencing `MyMES.Application`, `MyMES.Domain`,
-   `MyMES.Contracts`, `MyMES.Abstractions`, `MyMES.EventBus` and `MyMES.PluginSystem`.
-   Add `<FrameworkReference Include="Microsoft.AspNetCore.App" />` if it maps endpoints.
-2. Implement `IMyMesModule`, and `IEndpointModule` if it has an API surface:
+1. Add the entity as a plain POCO in `MyMES.Domain`.
+2. Add a service (and its interface) in `MyMES.Application`.
+3. Register the service in `MyMES.Application`'s `DependencyInjection`.
+4. Add a controller in `MyMES.Api/Controllers`.
+5. Add a migration: `Add-Migration <Name>`.
 
-   ```csharp
-   public sealed class MaintenanceModule : IMyMesModule, IEndpointModule
-   {
-       public string Name => "Maintenance";
-       public int Order => 50;
-
-       public void ConfigureServices(IServiceCollection services, IConfiguration configuration) =>
-           services.AddEventHandler<MachineStatusChangedEvent, ScheduleServiceOnFault>();
-
-       public void MapEndpoints(IEndpointRouteBuilder endpoints) =>
-           endpoints.MapGroup("/maintenance").WithTags("Maintenance");
-   }
-   ```
-
-3. Add the project to `MyMES.Api` and list its assembly in the `AddMyMesModules` call.
+That is the whole list. There is no module project, no separate contracts project and no separate
+repository project to touch.
 
 ## How to replace a service implementation
 
@@ -359,13 +317,6 @@ services.ReplaceService<IMachineService, CustomerMachineService>();
 ```csharp
 services.DecorateService<IMachineService, AuditingMachineService>();
 ```
-
-## How to add a machine driver
-
-Implement `IMachineDriver` in `MyMES.MachineService` and register it. Drivers are resolved as a
-collection, so adding Modbus TCP or OPC UA is one registration and no change to the poll loop.
-See `SimulatedMachineDriver` for the shape, including why an unreachable machine returns `null`
-rather than throwing.
 
 ## How to create an extension
 
@@ -382,10 +333,10 @@ in-process plugins can and cannot be trusted with.
 | `Guid.CreateVersion7()` for keys | Globally unique like any GUID, but time-ordered, so rows append to the clustered index instead of fragmenting it. |
 | Application layer references EF Core | `IApplicationDbContext` exposes `DbSet<T>`. EF Core already is a unit of work with a queryable repository; wrapping it in a generic repository removes capability and adds a layer. The **domain** stays framework-free, which is the boundary that protects the rules. |
 | Contracts duplicate the domain enums | The public API must be able to stay stable while the domain evolves. The mapping is explicit, so drift is caught early. |
-| One DbContext, two schemas | `mes` and `identity`. One migration history, one transaction when a business change and a user change must happen together. Per-module contexts are the next step if a module ever moves to its own database. |
+| One DbContext, two schemas | `mes` and `identity`. One migration history, one transaction when a business change and a user change must happen together. |
 | Over-production is accepted | The floor really does make extra pieces. Refusing the booking pushes operators into not reporting at all. |
 | Permissions in the token | The API authorises from the token alone, with no database round trip per request. The cost is that a permission change takes effect when the token expires. |
-| In-process event bus | The right shape for a modular monolith: modules stay decoupled without the operational cost of a broker. Publishing is not transactional; anything that must not be lost needs an outbox. |
+| In-process event bus | Services stay decoupled without the operational cost of a broker. Publishing is not transactional; anything that must not be lost needs an outbox. |
 
 ---
 
@@ -393,12 +344,8 @@ in-process plugins can and cannot be trusted with.
 
 - **Transactional outbox.** Domain events are published after commit and a failing handler is
   logged, not retried. Fine for the current handlers; required before anything money-adjacent.
-- **Per-module schemas.** All entities live in `MyMES.Domain` and all configurations in
-  `MyMES.Persistence`. The schema separation makes the split possible later.
-- **Real machine protocols.** Only the simulated driver exists; `IMachineDriver` is the seam.
-- **Quality and inventory as features.** They are working module scaffolding, not finished
-  modules: an in-memory inspection backlog and stock ledger that demonstrate cross-module
-  reaction through events.
+- **Real machine protocols.** Machine drivers are a seam to be filled in later.
+- **Quality and inventory as features.** The seams exist; the features themselves are not built.
 - **Refresh tokens.** A token lives one hour and the user signs in again.
 - **Dynamic plugin loading.** Plugins are discovered from referenced assemblies. Loading DLLs
   from `plugins/` at run time is a deployment decision, not a security boundary; see the plugin

@@ -29,7 +29,7 @@ So:
   holds only the permissions it needs. That boundary is real because the operating system
   enforces it.
 - **Give extension service accounts the minimum permissions.** The permission model works for
-  machine-to-machine callers; the MachineService is the worked example.
+  machine-to-machine callers.
 
 ---
 
@@ -160,38 +160,6 @@ catalog.Register("acme.sync", MesRoles.Administrator, MesRoles.Supervisor);
 
 Then use it: `RequireAuthorization("acme.sync")`.
 
-## Adding a machine driver
-
-Implement `IMachineDriver` in a project the MachineService references and register it. Drivers
-are resolved as a collection, so the poll loop does not change.
-
-```csharp
-public sealed class ModbusDriver(ILogger<ModbusDriver> logger) : IMachineDriver
-{
-    public string Protocol => "modbus-tcp";
-    public IReadOnlyCollection<string> MachineCodes => ["PRESS-01"];
-
-    public async Task<MachineReading?> ReadAsync(string machineCode, CancellationToken cancellationToken)
-    {
-        try
-        {
-            // ... read the registers ...
-        }
-        catch (SocketException ex)
-        {
-            // Unreachable is an expected condition on a shop floor, not an exception the
-            // poll loop should handle. Return null and it is reported as a comms failure.
-            logger.LogDebug(ex, "{MachineCode} did not answer.", machineCode);
-            return null;
-        }
-    }
-}
-```
-
-**Never put safety logic in a driver.** Emergency stop, light curtains and interlocks belong to
-the machine's own safety chain, which is independent of the MES by design and by regulation. The
-MES observes and records; it does not make a machine safe.
-
 ## Compatibility
 
 `CompatiblePlatformVersion` is compared on major and minor; patch releases stay compatible. A
@@ -200,11 +168,9 @@ integration targets 0.1 instead of 0.2 is the wrong default. Check the log after
 
 Stable to build against:
 
-- `MyMES.Contracts` — DTOs and wire enums
-- `MyMES.Abstractions` — module contract, `Result`, `IDateTimeProvider`, `ICurrentUser`,
-  permission constants
+- `MyMES.Application` — DTOs, `Result`, `IDateTimeProvider`, `ICurrentUser`, permission constants
+  and service interfaces
 - `MyMES.PluginSystem` — plugin contract and the three mechanisms
-- `MyMES.Application` service interfaces
 
-Not stable, and not intended for extensions: `MyMES.Persistence` internals, entity configurations,
-and anything marked `internal`.
+Not stable, and not intended for extensions: `MyMES.Infrastructure` internals, entity
+configurations, and anything marked `internal`.

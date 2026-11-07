@@ -1,9 +1,7 @@
 using MyMES.Contracts.Integrations;
-using MyMES.Contracts.Machines;
 using MyMES.Contracts.Production;
 using MyMES.Contracts.Products;
 using MyMES.Domain.Integrations;
-using MyMES.Domain.Machines;
 using MyMES.Domain.Production;
 using MyMES.Domain.Products;
 
@@ -20,38 +18,6 @@ namespace MyMES.Application.Mapping;
 /// </remarks>
 public static class DomainToContractMappings
 {
-    public static MachineStatusDto ToDto(this MachineStatus status) => status switch
-    {
-        MachineStatus.Unknown => MachineStatusDto.Unknown,
-        MachineStatus.Idle => MachineStatusDto.Idle,
-        MachineStatus.Running => MachineStatusDto.Running,
-        MachineStatus.Faulted => MachineStatusDto.Faulted,
-        MachineStatus.Maintenance => MachineStatusDto.Maintenance,
-        MachineStatus.Decommissioned => MachineStatusDto.Decommissioned,
-        _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unmapped machine status.")
-    };
-
-    public static MachineStatus ToDomain(this MachineStatusDto status) => status switch
-    {
-        MachineStatusDto.Unknown => MachineStatus.Unknown,
-        MachineStatusDto.Idle => MachineStatus.Idle,
-        MachineStatusDto.Running => MachineStatus.Running,
-        MachineStatusDto.Faulted => MachineStatus.Faulted,
-        MachineStatusDto.Maintenance => MachineStatus.Maintenance,
-        MachineStatusDto.Decommissioned => MachineStatus.Decommissioned,
-        _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unmapped machine status.")
-    };
-
-    public static MachineDto ToDto(this Machine machine) => new(
-        machine.Id,
-        machine.MachineCode,
-        machine.Name,
-        machine.Description,
-        machine.Status.ToDto(),
-        machine.StatusChangedAtUtc,
-        machine.CreatedAtUtc,
-        machine.UpdatedAtUtc);
-
     public static ProductionOrderStatusDto ToDto(this ProductionOrderStatus status) => status switch
     {
         ProductionOrderStatus.Draft => ProductionOrderStatusDto.Draft,

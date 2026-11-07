@@ -1,4 +1,4 @@
-# MyMES stack: SQL Server, API, Blazor front end and the machine worker.
+# MyMES stack: SQL Server, API and Blazor front end.
 #
 #   cp .env.example .env     (then fill in the secrets)
 #   docker compose up -d --build
@@ -77,26 +77,6 @@ services:
       Api__BaseUrl: "http://api:8080"
     ports:
       - "${WEB_PORT:-5200}:8080"
-    networks:
-      - mymes
-    restart: unless-stopped
-
-  machineservice:
-    build:
-      context: .
-      dockerfile: deployment/docker/Dockerfile.machineservice
-    container_name: mymes-machineservice
-    depends_on:
-      api:
-        condition: service_healthy
-    environment:
-      DOTNET_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
-      MachineService__ApiBaseUrl: "http://api:8080"
-      MachineService__PollIntervalSeconds: ${MACHINE_POLL_SECONDS:-10}
-      # Without a service account the worker polls and logs but reports nothing, which is a
-      # deliberately visible no-op rather than an anonymous write.
-      MachineService__UserName: ${MACHINE_SERVICE_USERNAME:-}
-      MachineService__Password: ${MACHINE_SERVICE_PASSWORD:-}
     networks:
       - mymes
     restart: unless-stopped

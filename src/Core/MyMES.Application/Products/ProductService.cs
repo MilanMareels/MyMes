@@ -6,8 +6,8 @@ using MyMES.Application.Abstractions;
 using MyMES.Application.Mapping;
 using MyMES.Contracts.Common;
 using MyMES.Contracts.Products;
-using MyMES.Domain.Common;
 using MyMES.Domain.Products;
+using MyMES.EventBus;
 
 namespace MyMES.Application.Products;
 
@@ -15,6 +15,7 @@ namespace MyMES.Application.Products;
 public sealed class ProductService(
     IApplicationDbContext db,
     IDateTimeProvider clock,
+    IEventBus eventBus,
     ILogger<ProductService> logger) : IProductService
 {
     public async Task<PagedResult<ProductSummaryDto>> GetAsync(
@@ -82,6 +83,17 @@ public sealed class ProductService(
         CancellationToken cancellationToken = default)
     {
         var code = request.ProductCode.Trim().ToUpperInvariant();
+        var name = request.Name.Trim();
+
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return Result.Failure<ProductDto>(Error.Validation("product.code_required", "A product needs a code."));
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return Result.Failure<ProductDto>(Error.Validation("product.name_required", "A product needs a name."));
+        }
 
         if (await db.Products.AnyAsync(p => p.ProductCode == code, cancellationToken).ConfigureAwait(false))
         {
@@ -90,30 +102,26 @@ public sealed class ProductService(
                 $"Product code {code} is already in use."));
         }
 
-        try
+        var product = new Product(Guid.NewGuid())
         {
-            var product = Product.Create(
-                request.ProductCode,
-                request.Name,
-                request.Description,
-                request.UnitOfMeasure);
+            ProductCode = code,
+            Name = name,
+            Description = request.Description?.Trim(),
+            UnitOfMeasure = string.IsNullOrWhiteSpace(request.UnitOfMeasure) ? "pcs" : request.UnitOfMeasure.Trim(),
+            IsActive = true
+        };
 
-            // Creating the first revision here saves a second call for the common case.
-            if (!string.IsNullOrWhiteSpace(request.InitialVersionNumber))
-            {
-                product.AddVersion(request.InitialVersionNumber, notes: null, clock.UtcNow);
-            }
-
-            db.Products.Add(product);
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-            logger.LogInformation("Product {ProductCode} created with id {ProductId}.", product.ProductCode, product.Id);
-            return Result.Success(product.ToDto());
-        }
-        catch (DomainException ex)
+        // Creating the first revision here saves a second call for the common case.
+        if (!string.IsNullOrWhiteSpace(request.InitialVersionNumber))
         {
-            return Result.Failure<ProductDto>(Error.Validation(ex.Code, ex.Message));
+            AddDraftVersion(product, request.InitialVersionNumber, notes: null);
         }
+
+        db.Products.Add(product);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("Product {ProductCode} created with id {ProductId}.", product.ProductCode, product.Id);
+        return Result.Success(product.ToDto());
     }
 
     public async Task<Result<ProductDto>> UpdateAsync(
@@ -127,16 +135,21 @@ public sealed class ProductService(
             return Result.Failure<ProductDto>(NotFound(id));
         }
 
-        try
+        var name = request.Name.Trim();
+        if (string.IsNullOrWhiteSpace(name))
         {
-            product.UpdateDetails(request.Name, request.Description, request.UnitOfMeasure);
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return Result.Success(product.ToDto());
+            return Result.Failure<ProductDto>(Error.Validation("product.name_required", "A product needs a name."));
         }
-        catch (DomainException ex)
+
+        product.Name = name;
+        product.Description = request.Description?.Trim();
+        if (!string.IsNullOrWhiteSpace(request.UnitOfMeasure))
         {
-            return Result.Failure<ProductDto>(Error.Validation(ex.Code, ex.Message));
+            product.UnitOfMeasure = request.UnitOfMeasure.Trim();
         }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Result.Success(product.ToDto());
     }
 
     public async Task<Result<ProductVersionDto>> AddVersionAsync(
@@ -150,50 +163,43 @@ public sealed class ProductService(
             return Result.Failure<ProductVersionDto>(NotFound(productId));
         }
 
-        try
+        if (!product.IsActive)
         {
-            var version = product.AddVersion(request.VersionNumber, request.Notes, clock.UtcNow);
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-            logger.LogInformation(
-                "Revision {VersionNumber} added to product {ProductCode}.",
-                version.VersionNumber,
-                product.ProductCode);
-
-            return Result.Success(version.ToDto());
+            return Result.Failure<ProductVersionDto>(Error.Validation(
+                "product.inactive",
+                $"Product {product.ProductCode} is inactive and cannot take new revisions."));
         }
-        catch (DomainException ex)
+
+        var versionNumber = request.VersionNumber.Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(versionNumber))
         {
-            // A duplicate revision number is a conflict; everything else is bad input.
-            var error = ex.Code == "product_version.duplicate"
-                ? Error.Conflict(ex.Code, ex.Message)
-                : Error.Validation(ex.Code, ex.Message);
-            return Result.Failure<ProductVersionDto>(error);
+            return Result.Failure<ProductVersionDto>(Error.Validation(
+                "product_version.number_required",
+                "A revision needs a version number."));
         }
+
+        if (product.Versions.Any(v => v.VersionNumber == versionNumber))
+        {
+            return Result.Failure<ProductVersionDto>(Error.Conflict(
+                "product_version.duplicate",
+                $"Product {product.ProductCode} already has revision {versionNumber}."));
+        }
+
+        var version = AddDraftVersion(product, versionNumber, request.Notes);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation(
+            "Revision {VersionNumber} added to product {ProductCode}.",
+            version.VersionNumber,
+            product.ProductCode);
+
+        return Result.Success(version.ToDto());
     }
 
-    public Task<Result<ProductDto>> ReleaseVersionAsync(
+    public async Task<Result<ProductDto>> ReleaseVersionAsync(
         Guid productId,
         Guid versionId,
-        CancellationToken cancellationToken = default) =>
-        MutateAsync(productId, (product, now) => product.ReleaseVersion(versionId, now), cancellationToken);
-
-    public Task<Result<ProductDto>> ObsoleteVersionAsync(
-        Guid productId,
-        Guid versionId,
-        CancellationToken cancellationToken = default) =>
-        MutateAsync(productId, (product, now) => product.ObsoleteVersion(versionId, now), cancellationToken);
-
-    public Task<Result<ProductDto>> DeactivateAsync(Guid id, CancellationToken cancellationToken = default) =>
-        MutateAsync(id, (product, now) => product.Deactivate(now), cancellationToken);
-
-    public Task<Result<ProductDto>> ActivateAsync(Guid id, CancellationToken cancellationToken = default) =>
-       MutateAsync(id, (product, now) => product.Activate(now), cancellationToken);
-
-    private async Task<Result<ProductDto>> MutateAsync(
-        Guid productId,
-        Action<Product, DateTime> change,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var product = await LoadAsync(productId, tracking: true, cancellationToken).ConfigureAwait(false);
         if (product is null)
@@ -201,25 +207,148 @@ public sealed class ProductService(
             return Result.Failure<ProductDto>(NotFound(productId));
         }
 
-        try
+        var version = product.Versions.SingleOrDefault(v => v.Id == versionId);
+        if (version is null)
         {
-            change(product, clock.UtcNow);
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return Result.Success(product.ToDto());
+            return Result.Failure<ProductDto>(Error.NotFound(
+                "product_version.not_found",
+                $"Product {product.ProductCode} has no revision {versionId}."));
         }
-        catch (DomainException ex)
+
+        if (!product.IsActive)
         {
-            var error = ex.Code.EndsWith("not_found", StringComparison.Ordinal)
-                ? Error.NotFound(ex.Code, ex.Message)
-                : Error.Conflict(ex.Code, ex.Message);
-            return Result.Failure<ProductDto>(error);
+            return Result.Failure<ProductDto>(Error.Validation(
+                "product.inactive",
+                $"Product {product.ProductCode} is inactive and cannot release revisions."));
         }
+
+        if (version.Status != ProductVersionStatus.Draft)
+        {
+            return Result.Failure<ProductDto>(Error.Conflict(
+                "product_version.not_draft",
+                $"Revision {version.VersionNumber} is {version.Status} and can no longer be released."));
+        }
+
+        // The invariant: releasing one revision retires the current one.
+        var previous = product.ReleasedVersion;
+        if (previous is not null)
+        {
+            previous.Status = ProductVersionStatus.Obsolete;
+            previous.ObsoletedAtUtc = clock.UtcNow;
+        }
+
+        version.Status = ProductVersionStatus.Released;
+        version.ReleasedAtUtc = clock.UtcNow;
+        version.ObsoletedAtUtc = null;
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        await eventBus.PublishAsync(new ProductVersionReleasedEvent(
+            product.Id,
+            product.ProductCode,
+            version.Id,
+            version.VersionNumber,
+            previous?.VersionNumber,
+            clock.UtcNow), cancellationToken).ConfigureAwait(false);
+
+        return Result.Success(product.ToDto());
     }
 
-    /// <summary>
-    /// Loads a product with its revisions. The whole aggregate is loaded because its invariants
-    /// span the revisions: releasing one has to see the others.
-    /// </summary>
+    public async Task<Result<ProductDto>> ObsoleteVersionAsync(
+        Guid productId,
+        Guid versionId,
+        CancellationToken cancellationToken = default)
+    {
+        var product = await LoadAsync(productId, tracking: true, cancellationToken).ConfigureAwait(false);
+        if (product is null)
+        {
+            return Result.Failure<ProductDto>(NotFound(productId));
+        }
+
+        var version = product.Versions.SingleOrDefault(v => v.Id == versionId);
+        if (version is null)
+        {
+            return Result.Failure<ProductDto>(Error.NotFound(
+                "product_version.not_found",
+                $"Product {product.ProductCode} has no revision {versionId}."));
+        }
+
+        version.Status = ProductVersionStatus.Obsolete;
+        version.ObsoletedAtUtc = clock.UtcNow;
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Result.Success(product.ToDto());
+    }
+
+    public async Task<Result<ProductDto>> DeactivateAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var product = await LoadAsync(id, tracking: true, cancellationToken).ConfigureAwait(false);
+        if (product is null)
+        {
+            return Result.Failure<ProductDto>(NotFound(id));
+        }
+
+        if (product.IsActive)
+        {
+            product.IsActive = false;
+            var released = product.ReleasedVersion;
+            if (released is not null)
+            {
+                released.Status = ProductVersionStatus.Obsolete;
+                released.ObsoletedAtUtc = clock.UtcNow;
+            }
+
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return Result.Success(product.ToDto());
+    }
+
+    public async Task<Result<ProductDto>> ActivateAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var product = await LoadAsync(id, tracking: true, cancellationToken).ConfigureAwait(false);
+        if (product is null)
+        {
+            return Result.Failure<ProductDto>(NotFound(id));
+        }
+
+        if (!product.IsActive)
+        {
+            product.IsActive = true;
+
+            var versionToRestore = product.Versions
+                .Where(v => v.ReleasedAtUtc.HasValue)
+                .OrderByDescending(v => v.ObsoletedAtUtc ?? v.ReleasedAtUtc)
+                .FirstOrDefault();
+
+            if (versionToRestore is not null)
+            {
+                versionToRestore.Status = ProductVersionStatus.Released;
+                versionToRestore.ReleasedAtUtc = clock.UtcNow;
+                versionToRestore.ObsoletedAtUtc = null;
+            }
+
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return Result.Success(product.ToDto());
+    }
+
+    private ProductVersion AddDraftVersion(Product product, string versionNumber, string? notes)
+    {
+        var version = new ProductVersion(Guid.NewGuid())
+        {
+            ProductId = product.Id,
+            VersionNumber = versionNumber.Trim().ToUpperInvariant(),
+            Notes = notes?.Trim(),
+            Status = ProductVersionStatus.Draft,
+            CreatedAtUtc = clock.UtcNow
+        };
+        product.Versions.Add(version);
+        return version;
+    }
+
+    /// <summary>Loads a product with its revisions.</summary>
     private Task<Product?> LoadAsync(Guid id, bool tracking, CancellationToken cancellationToken)
     {
         var query = tracking ? db.Products : db.Products.AsNoTracking();

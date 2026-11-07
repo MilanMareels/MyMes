@@ -10,7 +10,6 @@ using Microsoft.Extensions.Options;
 using MyMES.Abstractions.Security;
 using MyMES.Api;
 using MyMES.Api.BackgroundServices;
-using MyMES.Api.Endpoints;
 using MyMES.Api.ExceptionHandling;
 using MyMES.Api.Extensions;
 using MyMES.Api.Realtime;
@@ -73,6 +72,7 @@ try
     builder.Services.AddMyMesAuthentication(jwtOptions, signingKey);
     builder.Services.AddMyMesVersioning();
     builder.Services.AddMyMesSwagger();
+    builder.Services.AddControllers();
 
     // The API knows who is calling and can push to clients, so it replaces the two defaults the
     // infrastructure registered for hosts that cannot.
@@ -111,10 +111,6 @@ try
         builder.Configuration,
         platformVersion,
         startupLoggerFactory.CreateLogger("MyMES.Modules"),
-        typeof(MyMES.Modules.Machines.MachinesModule).Assembly,
-        typeof(MyMES.Modules.Production.ProductionModule).Assembly,
-        typeof(MyMES.Modules.Quality.QualityModule).Assembly,
-        typeof(MyMES.Modules.Inventory.InventoryModule).Assembly,
         typeof(MyMES.Extensions.Sample.SampleExtensionPlugin).Assembly);
 
     builder.Services.AddMyMesAuthorization(permissionCatalog);
@@ -172,10 +168,8 @@ try
 
     var api = app.MapGroup("/api/v1").WithApiVersionSet(versionSet);
 
-    api.MapAuthEndpoints();
-    api.MapUserEndpoints();
-    api.MapPlatformEndpoints();
-    api.MapIntegrationEndpoints();
+    // MVC controllers register their own routes.
+    app.MapControllers();
 
     // Every module and plugin contributes its own routes under the same versioned group.
     foreach (var endpointModule in app.Services.GetServices<IEndpointModule>())

@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using MyMES.Abstractions.Time;
 using MyMES.Application.Abstractions;
 using MyMES.Contracts.Dashboard;
-using MyMES.Domain.Machines;
 using MyMES.Domain.Production;
 
 namespace MyMES.Application.Dashboard;
@@ -23,18 +22,6 @@ public sealed class DashboardService(IApplicationDbContext db, IDateTimeProvider
 
         // Counted with aggregate queries rather than by loading rows: these numbers are polled
         // from the dashboard and must stay cheap as the tables grow.
-        var totalMachines = await db.Machines
-            .CountAsync(m => m.Status != MachineStatus.Decommissioned, cancellationToken)
-            .ConfigureAwait(false);
-
-        var runningMachines = await db.Machines
-            .CountAsync(m => m.Status == MachineStatus.Running, cancellationToken)
-            .ConfigureAwait(false);
-
-        var faultedMachines = await db.Machines
-            .CountAsync(m => m.Status == MachineStatus.Faulted, cancellationToken)
-            .ConfigureAwait(false);
-
         var activeOrders = await db.ProductionOrders
             .CountAsync(
                 o => o.Status == ProductionOrderStatus.Released
@@ -63,9 +50,6 @@ public sealed class DashboardService(IApplicationDbContext db, IDateTimeProvider
             .ConfigureAwait(false);
 
         return new DashboardSummaryDto(
-            totalMachines,
-            runningMachines,
-            faultedMachines,
             activeOrders,
             producedToday,
             completedToday,

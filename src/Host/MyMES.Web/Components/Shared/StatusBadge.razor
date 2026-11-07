@@ -3,23 +3,12 @@
 <span class="badge @CssClass">@Text</span>
 
 @code {
-    [Parameter] public MachineStatusDto? Machine { get; set; }
-
     [Parameter] public ProductionOrderStatusDto? Order { get; set; }
 
     [Parameter] public ProductVersionStatusDto? Version { get; set; }
 
     private string CssClass => this switch
     {
-        { Machine: { } m } => m switch
-        {
-            MachineStatusDto.Running => "ok",
-            MachineStatusDto.Idle => "idle",
-            MachineStatusDto.Faulted => "bad",
-            MachineStatusDto.Maintenance => "info",
-            MachineStatusDto.Decommissioned => "off",
-            _ => "idle"
-        },
         { Order: { } o } => o switch
         {
             ProductionOrderStatusDto.InProgress => "ok",
@@ -41,7 +30,6 @@
 
     private string Text => this switch
     {
-        { Machine: { } m } => Humanise(m.ToString()),
         { Order: { } o } => Humanise(o.ToString()),
         { Version: { } v } => Humanise(v.ToString()),
         _ => "-"

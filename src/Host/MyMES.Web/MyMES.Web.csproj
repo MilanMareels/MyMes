@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
@@ -12,9 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\BuildingBlocks\MyMES.Localization\MyMES.Localization.csproj" />
-    <ProjectReference Include="..\..\Core\MyMES.Abstractions\MyMES.Abstractions.csproj" />
-    <ProjectReference Include="..\..\Core\MyMES.Contracts\MyMES.Contracts.csproj" />
+    <ProjectReference Include="..\..\Core\MyMES.Application\MyMES.Application.csproj" />
   </ItemGroup>
 
 </Project>

@@ -7,7 +7,6 @@ using MyMES.Contracts.Common;
 using MyMES.Contracts.Dashboard;
 using MyMES.Contracts.Identity;
 using MyMES.Contracts.Integrations;
-using MyMES.Contracts.Machines;
 using MyMES.Contracts.Production;
 using MyMES.Contracts.Products;
 
@@ -70,42 +69,6 @@ public sealed class MyMesApiClient(HttpClient http)
 
     public Task<PlatformInfoDto?> GetPlatformAsync(CancellationToken cancellationToken = default) =>
         GetAsync<PlatformInfoDto>("api/v1/platform", cancellationToken);
-
-    // -- Machines --------------------------------------------------------------
-
-    public Task<PagedResult<MachineDto>?> GetMachinesAsync(
-        int page = 1,
-        int pageSize = 25,
-        MachineStatusDto? status = null,
-        string? search = null,
-        CancellationToken cancellationToken = default)
-    {
-        var query = $"api/v1/machines?page={page}&pageSize={pageSize}";
-        if (status is not null)
-        {
-            query += $"&status={status}";
-        }
-        
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            query += $"&search={Uri.EscapeDataString(search)}";
-        }
-        return GetAsync<PagedResult<MachineDto>>(query, cancellationToken);
-    }
-
-    public Task<MachineDto?> CreateMachineAsync(
-        CreateMachineRequest request,
-        CancellationToken cancellationToken = default) =>
-        PostAsync<CreateMachineRequest, MachineDto>("api/v1/machines", request, cancellationToken);
-
-    public Task<MachineDto?> ChangeMachineStatusAsync(
-        Guid id,
-        MachineStatusDto status,
-        CancellationToken cancellationToken = default) =>
-        PostAsync<ChangeMachineStatusRequest, MachineDto>(
-            $"api/v1/machines/{id}/status",
-            new ChangeMachineStatusRequest { Status = status },
-            cancellationToken);
 
     // -- Production orders ------------------------------------------------------
 
@@ -210,9 +173,6 @@ public sealed class MyMesApiClient(HttpClient http)
         CreateUserRequest request,
         CancellationToken cancellationToken = default) =>
         PostAsync<CreateUserRequest, UserDto>("api/v1/users", request, cancellationToken);
-
-    public Task DecommissionMachineAsync(Guid id, CancellationToken cancellationToken = default) =>
-        PostAsync<object, MachineDto>($"api/v1/machines/{id}/decommission", new { }, cancellationToken);
 
     public Task<ProductDto?> DeactivateProductAsync(Guid id, CancellationToken cancellationToken = default) =>
         PostAsync<object, ProductDto>($"api/v1/products/{id}/deactivate", new { }, cancellationToken);

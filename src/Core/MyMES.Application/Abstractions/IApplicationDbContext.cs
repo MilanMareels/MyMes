@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using MyMES.Domain.Integrations;
-using MyMES.Domain.Machines;
 using MyMES.Domain.Personnel;
 using MyMES.Domain.Production;
 using MyMES.Domain.Products;
@@ -24,8 +23,6 @@ namespace MyMES.Application.Abstractions;
 /// </remarks>
 public interface IApplicationDbContext
 {
-    DbSet<Machine> Machines { get; }
-
     DbSet<ProductionOrder> ProductionOrders { get; }
 
     DbSet<Product> Products { get; }
