@@ -10,18 +10,18 @@ into six projects so the dependencies always point inward.
 Entities (plain POCOs), enums and domain events. **References nothing** — not EF Core, not
 ASP.NET, not another MyMES project.
 
-Entities carry no business methods: `Product`, `Machine` and `ProductionOrder` are data objects
+Entities carry no business methods: `Product` and `ProductionOrder` are data objects
 with `get; set;` properties. The business rules live in the services.
 
 ### MyMES.Application
 
-Use cases, validation, DTOs and mapping. Defines `IApplicationDbContext`, which exposes `DbSet<T>`
-and `SaveChangesAsync`.
+Use cases, validation, DTOs and mapping. Defines `IRepository<T>`, the data-access contract that
+services use; Infrastructure implements it with EF Core.
 
-This is the one place purity is traded away deliberately: the application layer references EF Core.
-The alternative, a generic `IRepository<T>`, hides `Include`, projection and `AsNoTracking` behind
-an abstraction that can only ever be a worse version of what EF already offers. The boundary that
-actually protects the business rules is the domain's, and that one is absolute.
+Services inject `IRepository<T>` (for example `IRepository<Product>`) and never see the DbContext.
+The repository is the only place that exposes EF Core's queryable, so a field or a query change
+stays in one file. The **domain** stays framework-free, which is the boundary that protects the
+rules.
 
 Services return `Result` / `Result<T>` for expected failures (duplicate code, missing record,
 illegal transition) and let genuine faults throw. The controllers map the first to a status code

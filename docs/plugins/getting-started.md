@@ -1,8 +1,7 @@
 # Writing an extension
 
-MyMES is built to be extended without forking it. A customer or integrator can add modules,
-machine drivers, workflow steps and endpoints, and can replace or wrap services the platform
-ships with.
+MyMES is built to be extended without forking it. A customer or integrator can add endpoints and
+workflow steps, and can replace or wrap services the platform ships with.
 
 `extensions/MyMES.Extensions.Sample` is a working example that builds and runs as part of the
 solution. Start there.
@@ -52,23 +51,22 @@ Wrap the existing implementation so yours runs around it. Use to add behaviour w
 platform's: auditing, caching, pushing a copy of every booking to an ERP.
 
 ```csharp
-services.DecorateService<IMachineService, AuditingMachineService>();
+services.DecorateService<IProductService, AuditingProductService>();
 ```
 
 The decorator takes the wrapped service as a constructor parameter:
 
 ```csharp
-internal sealed class AuditingMachineService(IMachineService inner, ILogger<AuditingMachineService> logger)
-    : IMachineService
+internal sealed class AuditingProductService(IProductService inner, ILogger<AuditingProductService> logger)
+    : IProductService
 {
-    public async Task<Result<MachineDto>> ChangeStatusAsync(
-        Guid id, ChangeMachineStatusRequest request, CancellationToken cancellationToken = default)
+    public async Task<Result<ProductDto>> CreateAsync(
+        CreateProductRequest request, CancellationToken cancellationToken = default)
     {
-        var result = await inner.ChangeStatusAsync(id, request, cancellationToken);
+        var result = await inner.CreateAsync(request, cancellationToken);
         if (result.IsSuccess)
         {
-            logger.LogInformation("{MachineCode} moved to {Status}.",
-                result.Value.MachineCode, result.Value.Status);
+            logger.LogInformation("Product {Code} created.", result.Value.ProductCode);
         }
 
         return result;
@@ -82,10 +80,9 @@ internal sealed class AuditingMachineService(IMachineService inner, ILogger<Audi
 ### Extend
 
 Add functionality beside what exists, changing nothing. Use for anything the host resolves as a
-collection: extra event handlers, extra machine drivers, extra endpoints.
+collection: extra event handlers, extra endpoints.
 
 ```csharp
-services.ExtendWith<IMachineDriver, ModbusDriver>();
 services.AddEventHandler<ProductionOrderCompletedEvent, NotifyErpOnCompletion>();
 ```
 
@@ -110,7 +107,7 @@ public sealed class AcmePlugin : IMyMesPlugin, IEndpointModule
             return;
         }
 
-        services.DecorateService<IMachineService, AcmeAuditingMachineService>();
+        services.DecorateService<IProductService, AcmeProductAuditor>();
         services.AddEventHandler<ProductionOrderCompletedEvent, PostToErp>();
         services.AddHostedService<ErpSyncWorker>();
     }
@@ -144,7 +141,7 @@ Points worth copying:
 Reference the project from `MyMES.Api` and add its assembly to the `AddMyMesModules` call in
 `Program.cs`.
 
-Order is guaranteed: every built-in module runs first, then plugins. By the time your
+Order is guaranteed: every built-in service runs first, then plugins. By the time your
 `ConfigureServices` runs, every default you might want to replace or decorate is registered.
 Decorating something that is not registered throws with an explanation rather than failing
 silently.

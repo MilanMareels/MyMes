@@ -35,11 +35,11 @@ Every failure is RFC 7807 `ProblemDetails` with a machine-readable `code`:
 ```json
 {
   "title": "Conflict",
-  "detail": "Machine code CNC-01 is already registered.",
+  "detail": "Product code FG-PUMP-100 is already in use.",
   "status": 409,
-  "code": "machine.code_in_use",
+  "code": "product.code_in_use",
   "traceId": "00-a1b2...",
-  "instance": "/api/v1/machines"
+  "instance": "/api/v1/products"
 }
 ```
 
@@ -57,16 +57,6 @@ the code will not change.
 | 500 | Unexpected. Detail is withheld outside Development; quote the `traceId` |
 
 ## Endpoints
-
-### Machines — `MesPermissions.Machines*`
-
-| | |
-|---|---|
-| `GET /machines` | Paged, filter by `status` and `search` |
-| `GET /machines/{id}` | |
-| `POST /machines` | |
-| `PUT /machines/{id}` | Name and description; the code is immutable |
-| `POST /machines/{id}/status` | Separate right: operators change state without editing the register |
 
 ### Production orders — `MesPermissions.Production*`
 
@@ -118,8 +108,6 @@ different people.
 |---|---|
 | `GET /dashboard/summary` | KPI figures; any signed-in user |
 | `GET /platform` | Which plugins this instance loaded |
-| `GET /quality/pending-inspections` | |
-| `GET /inventory/movements` | |
 
 ### Outside the versioned group
 
@@ -135,12 +123,7 @@ Client methods on the hub:
 
 | Event | Payload |
 |---|---|
-| `MachineChanged` | `MachineDto` |
 | `ProductionOrderChanged` | `ProductionOrderDto` |
-| `Telemetry` | `MachineTelemetryReceived` |
-
-`SubscribeToMachine(machineCode)` narrows the feed to one machine, for a terminal mounted on it.
-Telemetry is high volume and goes only to a machine's own subscribers.
 
 ## Paging
 

@@ -104,7 +104,7 @@ The initial migration creates both schemas:
 
 | Schema | Tables |
 |---|---|
-| `mes` | `Machines`, `Products`, `ProductVersions`, `ProductionOrders`, `Employees`, `IncomingErpMessages`, `__EFMigrationsHistory` |
+| `mes` | `Products`, `ProductVersions`, `ProductionOrders`, `Employees`, `IncomingErpMessages`, `__EFMigrationsHistory` |
 | `identity` | `Users`, `Roles`, `UserRoles`, `UserClaims`, `UserLogins`, `UserTokens`, `RoleClaims` |
 
 Verified against SQL Server, not only generated:

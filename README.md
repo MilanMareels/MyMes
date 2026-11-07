@@ -1,10 +1,10 @@
 # MyMES
 
 A Manufacturing Execution System built on .NET 10, layered the simple way:
-**Controller → Service → Data access**.
+**Controller → Service → Repository**.
 
 This is a **foundation**: enough real functionality to prove the architecture works end to end,
-and nothing speculative on top of it. Machines, production orders and product revisions are fully
+and nothing speculative on top of it. Production orders and product revisions are fully
 implemented, together with JWT authentication and a Blazor front end.
 
 ---
@@ -52,7 +52,7 @@ Three boundaries matter more than the rest:
 2. **The Blazor application cannot reach the database.** It references `MyMES.Application` for
    DTOs and talks HTTP. Authorisation is therefore enforced where it counts, in the API.
 3. **Controllers know nothing about the database.** They call services; services use
-   `IApplicationDbContext`; only Infrastructure knows how to persist.
+   `IRepository<T>`; only the repository touches the DbContext.
 
 ---
 
@@ -286,7 +286,7 @@ migration can ever be applied to that database. More in
   authentication cookie; a delegating handler attaches it to every API call. The UI therefore
   always acts on behalf of the signed-in user.
 - Endpoints authorise against a **permission**, never a role:
-  `[Authorize(MesPermissions.MachinesWrite)]`. Roles hold permissions, and the mapping lives in
+  `[Authorize(MesPermissions.ProductsWrite)]`. Roles hold permissions, and the mapping lives in
   `MesRoles.DefaultGrants`.
 - Roles shipped: Administrator, Supervisor, Operator, Maintenance, Quality, Planner. They are
   seeded idempotently on every start-up.
@@ -298,24 +298,25 @@ migration can ever be applied to that database. More in
 ## How to add a feature
 
 1. Add the entity as a plain POCO in `MyMES.Domain`.
-2. Add a service (and its interface) in `MyMES.Application`.
-3. Register the service in `MyMES.Application`'s `DependencyInjection`.
-4. Add a controller in `MyMES.Api/Controllers`.
-5. Add a migration: `Add-Migration <Name>`.
+2. Add the DTOs (request + response) in `MyMES.Application`.
+3. Add a service (and its interface) in `MyMES.Application`; inject `IRepository<T>` for data.
+4. Register the service in `MyMES.Application`'s `DependencyInjection`.
+5. Add a controller in `MyMES.Api/Controllers`.
+6. Add a migration: `Add-Migration <Name>`.
 
-That is the whole list. There is no module project, no separate contracts project and no separate
-repository project to touch.
+The repository is generic — `IRepository<T>` works for any entity, so you never write a repository
+class yourself. One entity, one DTO, one service, one controller, one migration.
 
 ## How to replace a service implementation
 
 ```csharp
-services.ReplaceService<IMachineService, CustomerMachineService>();
+services.ReplaceService<IProductService, CustomerProductService>();
 ```
 
 ## How to wrap one without losing it
 
 ```csharp
-services.DecorateService<IMachineService, AuditingMachineService>();
+services.DecorateService<IProductService, AuditingProductService>();
 ```
 
 ## How to create an extension
@@ -331,7 +332,7 @@ in-process plugins can and cannot be trusted with.
 | Decision | Reasoning |
 |---|---|
 | `Guid.CreateVersion7()` for keys | Globally unique like any GUID, but time-ordered, so rows append to the clustered index instead of fragmenting it. |
-| Application layer references EF Core | `IApplicationDbContext` exposes `DbSet<T>`. EF Core already is a unit of work with a queryable repository; wrapping it in a generic repository removes capability and adds a layer. The **domain** stays framework-free, which is the boundary that protects the rules. |
+| Application layer references EF Core | `IRepository<T>` is the only place that touches the DbContext. Services see one interface with plain methods, so a field or a query change stays in one file. The **domain** stays framework-free, which is the boundary that protects the rules. |
 | Contracts duplicate the domain enums | The public API must be able to stay stable while the domain evolves. The mapping is explicit, so drift is caught early. |
 | One DbContext, two schemas | `mes` and `identity`. One migration history, one transaction when a business change and a user change must happen together. |
 | Over-production is accepted | The floor really does make extra pieces. Refusing the booking pushes operators into not reporting at all. |
@@ -344,7 +345,6 @@ in-process plugins can and cannot be trusted with.
 
 - **Transactional outbox.** Domain events are published after commit and a failing handler is
   logged, not retried. Fine for the current handlers; required before anything money-adjacent.
-- **Real machine protocols.** Machine drivers are a seam to be filled in later.
 - **Quality and inventory as features.** The seams exist; the features themselves are not built.
 - **Refresh tokens.** A token lives one hour and the user signs in again.
 - **Dynamic plugin loading.** Plugins are discovered from referenced assemblies. Loading DLLs

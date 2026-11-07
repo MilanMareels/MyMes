@@ -28,12 +28,11 @@ Entities are plain POCOs. The business rules have to outlive the frameworks arou
 
 ### 2. The application layer holds the business logic
 
-Services, DTOs, validation and mapping live here. It defines `IApplicationDbContext`, which
-exposes `DbSet<T>` and `SaveChangesAsync`; Infrastructure implements it.
+Services, DTOs, validation and mapping live here. It defines `IRepository<T>`, the data-access
+contract every service uses; Infrastructure implements it with EF Core.
 
-The application layer references EF Core as a library. That is a deliberate exception: EF already
-is a unit of work with a queryable repository, and hiding it behind a generic repository only
-removes capability.
+The service never sees `DbContext` or `DbSet` — only `IRepository<T>` with plain methods. The
+**domain** stays framework-free, which is the boundary that protects the rules.
 
 ### 3. The Blazor application cannot reach the database
 
@@ -45,7 +44,7 @@ behind the API. Keeping the UI on HTTP means every rule is enforced in exactly o
 
 ### 4. Controllers know nothing about the database
 
-Controllers call services; services call `IApplicationDbContext`. A controller that reached for
+Controllers call services; services call `IRepository<T>`. A controller that reached for
 the concrete `MyMesDbContext` would skip the business rules.
 
 ## Adding a reference
