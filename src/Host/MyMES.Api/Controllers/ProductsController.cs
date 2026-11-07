@@ -16,12 +16,7 @@ public sealed class ProductsController(IProductService products) : ApiController
 {
     [HttpGet]
     [Authorize(MesPermissions.ProductsRead)]
-    public async Task<IActionResult> List(
-        int? page,
-        int? pageSize,
-        bool? activeOnly,
-        string? search,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> List(int? page, int? pageSize, bool? activeOnly, string? search, CancellationToken cancellationToken)
     {
         var request = new PageRequest { Page = page ?? 1, PageSize = pageSize ?? 25 };
         return Ok(await products.GetAsync(request, activeOnly, search, cancellationToken));

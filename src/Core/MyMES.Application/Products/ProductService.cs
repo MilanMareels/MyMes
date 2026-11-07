@@ -12,17 +12,9 @@ using MyMES.EventBus;
 namespace MyMES.Application.Products;
 
 /// <inheritdoc cref="IProductService"/>
-public sealed class ProductService(
-    IRepository<Product> products,
-    IDateTimeProvider clock,
-    IEventBus eventBus,
-    ILogger<ProductService> logger) : IProductService
+public sealed class ProductService(IRepository<Product> products, IDateTimeProvider clock, IEventBus eventBus, ILogger<ProductService> logger) : IProductService
 {
-    public async Task<PagedResult<ProductSummaryDto>> GetAsync(
-        PageRequest page,
-        bool? activeOnly = null,
-        string? search = null,
-        CancellationToken cancellationToken = default)
+    public async Task<PagedResult<ProductSummaryDto>> GetAsync(PageRequest page, bool? activeOnly = null, string? search = null, CancellationToken cancellationToken = default)
     {
         var paging = page.Normalised();
         var query = products.Query().AsNoTracking().Include(p => p.Versions).AsQueryable();
@@ -78,9 +70,7 @@ public sealed class ProductService(
             : Result.Success(product.ToDto());
     }
 
-    public async Task<Result<ProductDto>> CreateAsync(
-        CreateProductRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<Result<ProductDto>> CreateAsync(CreateProductRequest request, CancellationToken cancellationToken = default)
     {
         var code = request.ProductCode.Trim().ToUpperInvariant();
         var name = request.Name.Trim();
@@ -114,7 +104,7 @@ public sealed class ProductService(
         // Creating the first revision here saves a second call for the common case.
         if (!string.IsNullOrWhiteSpace(request.InitialVersionNumber))
         {
-            AddDraftVersion(product, request.InitialVersionNumber, notes: null);
+            AddDraftVersion(product, request.InitialVersionNumber, notes: null, versionDescription: null);
         }
 
         products.Add(product);
@@ -152,10 +142,7 @@ public sealed class ProductService(
         return Result.Success(product.ToDto());
     }
 
-    public async Task<Result<ProductVersionDto>> AddVersionAsync(
-        Guid productId,
-        CreateProductVersionRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<Result<ProductVersionDto>> AddVersionAsync(Guid productId, CreateProductVersionRequest request, CancellationToken cancellationToken = default)
     {
         var product = await LoadAsync(productId, tracking: true, cancellationToken).ConfigureAwait(false);
         if (product is null)
@@ -185,7 +172,7 @@ public sealed class ProductService(
                 $"Product {product.ProductCode} already has revision {versionNumber}."));
         }
 
-        var version = AddDraftVersion(product, versionNumber, request.Notes);
+        var version = AddDraftVersion(product, versionNumber, request.Notes, request.VersionDescription);
         await products.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation(
@@ -196,10 +183,7 @@ public sealed class ProductService(
         return Result.Success(version.ToDto());
     }
 
-    public async Task<Result<ProductDto>> ReleaseVersionAsync(
-        Guid productId,
-        Guid versionId,
-        CancellationToken cancellationToken = default)
+    public async Task<Result<ProductDto>> ReleaseVersionAsync(Guid productId, Guid versionId, CancellationToken cancellationToken = default)
     {
         var product = await LoadAsync(productId, tracking: true, cancellationToken).ConfigureAwait(false);
         if (product is null)
@@ -254,10 +238,7 @@ public sealed class ProductService(
         return Result.Success(product.ToDto());
     }
 
-    public async Task<Result<ProductDto>> ObsoleteVersionAsync(
-        Guid productId,
-        Guid versionId,
-        CancellationToken cancellationToken = default)
+    public async Task<Result<ProductDto>> ObsoleteVersionAsync(Guid productId, Guid versionId, CancellationToken cancellationToken = default)
     {
         var product = await LoadAsync(productId, tracking: true, cancellationToken).ConfigureAwait(false);
         if (product is null)
@@ -334,13 +315,14 @@ public sealed class ProductService(
         return Result.Success(product.ToDto());
     }
 
-    private ProductVersion AddDraftVersion(Product product, string versionNumber, string? notes)
+    private ProductVersion AddDraftVersion(Product product, string versionNumber, string? notes, string? versionDescription)
     {
         var version = new ProductVersion(Guid.NewGuid())
         {
             ProductId = product.Id,
             VersionNumber = versionNumber.Trim().ToUpperInvariant(),
             Notes = notes?.Trim(),
+            VersionDescription = versionDescription?.Trim(),
             Status = ProductVersionStatus.Draft,
             CreatedAtUtc = clock.UtcNow
         };

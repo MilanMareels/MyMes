@@ -376,6 +376,10 @@ namespace MyMES.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<string>("VersionDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("VersionNumber")
                         .IsRequired()
                         .HasMaxLength(32)

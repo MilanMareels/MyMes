@@ -41,6 +41,7 @@ public sealed record ProductVersionDto(
     string VersionNumber,
     ProductVersionStatusDto Status,
     string? Notes,
+    string? VersionDescription,
     DateTime CreatedAtUtc,
     DateTime? ReleasedAtUtc,
     DateTime? ObsoletedAtUtc);
@@ -90,5 +91,8 @@ public sealed record CreateProductVersionRequest
 
     [StringLength(2000)]
     public string? Notes { get; set; }
+
+    [StringLength(500)]
+    public string? VersionDescription { get; set; }
 }
 

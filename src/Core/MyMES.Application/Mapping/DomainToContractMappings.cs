@@ -79,6 +79,7 @@ public static class DomainToContractMappings
         version.VersionNumber,
         version.Status.ToDto(),
         version.Notes,
+        version.VersionDescription,
         version.CreatedAtUtc,
         version.ReleasedAtUtc,
         version.ObsoletedAtUtc);

@@ -25,7 +25,9 @@
 @if (_creating)
 {
     <div class="panel">
-        <div class="panel-head"><h2>Create a product</h2></div>
+        <div class="panel-head">
+            <h2>Create a product</h2>
+        </div>
         <div class="panel-body">
             <EditForm Model="_newProduct" OnValidSubmit="CreateAsync" FormName="create-product">
                 <DataAnnotationsValidator />
@@ -118,8 +120,7 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <button type="button" class="btn ghost sm"
-                                            @onclick="() => OpenAsync(product.Id)">
+                                    <button type="button" class="btn ghost sm" @onclick="() => OpenAsync(product.Id)">
                                         Versions
                                     </button>
                                     @if (!product.IsActive)
@@ -175,7 +176,9 @@
             @if (_creatingVersion)
             {
                 <div class="panel">
-                    <div class="panel-head"><h2>Create a version</h2></div>
+                    <div class="panel-head">
+                        <h2>Create a version</h2>
+                    </div>
                     <div class="panel-body">
                         <EditForm Model="_newProductVersion" OnValidSubmit="CreateVersionAsync" FormName="create-version">
                             <DataAnnotationsValidator />
@@ -183,6 +186,14 @@
                                 <div class="field">
                                     <label>Product version number</label>
                                     <InputText @bind-value="_newProductVersion.VersionNumber" placeholder="1" />
+                                </div>
+                                <div class="field">
+                                    <label>Product version notes</label>
+                                    <InputText @bind-value="_newProductVersion.Notes" />
+                                </div>
+                                <div class="field">
+                                    <label>Product version description</label>
+                                    <InputText @bind-value="_newProductVersion.VersionDescription" />
                                 </div>
                             </div>
                             <button type="submit" class="btn primary" disabled="@_busy">Create</button>
@@ -193,8 +204,7 @@
 
             @if (_selected.Versions.Count == 0)
             {
-                <EmptyState Title="No version yet"
-                            Message="Add a draft revision before raising orders against this product." />
+                <EmptyState Title="No version yet" Message="Add a draft revision before raising orders against this product." />
             }
             else
             {
@@ -206,6 +216,7 @@
                             <th>Created</th>
                             <th>Released</th>
                             <th>Notes</th>
+                            <th>Description</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -214,12 +225,15 @@
                         {
                             <tr>
                                 <td><strong>@version.VersionNumber</strong></td>
-                                <td><StatusBadge Version="version.Status" /></td>
+                                <td>
+                                    <StatusBadge Version="version.Status" />
+                                </td>
                                 <td class="muted small">@version.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yy HH:mm")</td>
                                 <td class="muted small">
                                     @(version.ReleasedAtUtc?.ToLocalTime().ToString("dd/MM/yy HH:mm") ?? "-")
                                 </td>
                                 <td class="muted small">@version.Notes</td>
+                                <td class="muted small">@version.VersionDescription</td>
                                 <td>
                                     @if (version.Status == ProductVersionStatusDto.Draft)
                                     {
@@ -270,7 +284,6 @@
 
     private CreateProductRequest _newProduct = new();
     private CreateProductVersionRequest _newProductVersion = new();
-    private string? _newVersionNumber;
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
@@ -346,15 +359,15 @@
         try
         {
             var newVersion = new CreateProductVersionRequest
-                {
-                    VersionNumber = _newProductVersion.VersionNumber,
-                    Notes = _newProductVersion.Notes
-                };
+            {
+                VersionNumber = _newProductVersion.VersionNumber,
+                Notes = _newProductVersion.Notes,
+                VersionDescription = _newProductVersion.VersionDescription
+            };
 
             await Api.AddProductVersionAsync(_selected.Id, newVersion);
 
             _creatingVersion = false;
-            _newVersionNumber = null;
 
             await OpenAsync(_selected.Id);
             await LoadAsync();

@@ -69,6 +69,8 @@ public sealed class ProductVersion : Entity
 
     public string? Notes { get; set; }
 
+    public string? VersionDescription { get; set; } = string.Empty;
+
     public DateTime CreatedAtUtc { get; set; }
 
     /// <summary>When this revision became the released one.</summary>

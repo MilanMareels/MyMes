@@ -73,6 +73,9 @@ internal sealed class ProductVersionConfiguration : IEntityTypeConfiguration<Pro
             .IsRequired();
 
         builder.Property(v => v.Notes).HasMaxLength(2000);
+
+        builder.Property(v => v.VersionDescription).HasMaxLength(500);
+
         builder.Property(v => v.CreatedAtUtc).IsRequired();
 
         // A revision label is unique within its product, not across the catalogue.
