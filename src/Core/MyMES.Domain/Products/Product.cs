@@ -71,6 +71,15 @@ public sealed class ProductVersion : Entity
 
     public string? VersionDescription { get; set; } = string.Empty;
 
+    public DateTime EffectiveFrom { get; set; }
+
+    public DateTime? EffectiveTo { get; set; }
+
+    public string? ChangeLog { get; set; }
+
+    public ICollection<BillOfMaterialItem> BomItems { get; set; } = new List<BillOfMaterialItem>();
+    public ICollection<RoutingStep> RoutingSteps { get; set; } = new List<RoutingStep>();
+
     public DateTime CreatedAtUtc { get; set; }
 
     /// <summary>When this revision became the released one.</summary>
@@ -81,6 +90,48 @@ public sealed class ProductVersion : Entity
 
     /// <summary>Navigation back to the owning product; set by EF Core.</summary>
     public Product? Product { get; set; }
+}
+
+public class BillOfMaterialItem : Entity
+{
+    public BillOfMaterialItem()
+    {
+    }
+
+    public BillOfMaterialItem(Guid id) : base(id)
+    {
+    }
+
+    public Guid ProductVersionId { get; set; }
+    public ProductVersion ProductVersion { get; set; } = null!;
+
+    public Guid ComponentProductId { get; set; }
+    public Product ComponentProduct { get; set; } = null!;
+
+    public decimal Quantity { get; set; }
+
+    public Guid? RoutingStepId { get; set; }
+    public RoutingStep? RoutingStep { get; set; }
+}
+
+public class RoutingStep : Entity
+{
+    public RoutingStep()
+    {
+    }
+
+    public RoutingStep(Guid id) : base(id)
+    {
+    }
+
+    public Guid ProductVersionId { get; set; }
+    public ProductVersion ProductVersion { get; set; } = null!;
+
+    public int Sequence { get; set; }
+    public string Name { get; set; } = string.Empty; // Product name or step name
+    public string? Description { get; set; }
+
+    public ICollection<BillOfMaterialItem> BomItems { get; set; } = new List<BillOfMaterialItem>();
 }
 
 /// <summary>Raised when a revision becomes the released one for its product.</summary>

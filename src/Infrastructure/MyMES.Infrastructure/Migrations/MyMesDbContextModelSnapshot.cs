@@ -302,6 +302,35 @@ namespace MyMES.Infrastructure.Migrations
                     b.ToTable("ProductionOrders", "mes");
                 });
 
+            modelBuilder.Entity("MyMES.Domain.Products.BillOfMaterialItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ComponentProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProductVersionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid?>("RoutingStepId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComponentProductId");
+
+                    b.HasIndex("ProductVersionId");
+
+                    b.HasIndex("RoutingStepId");
+
+                    b.ToTable("BillOfMaterialItems", "mes");
+                });
+
             modelBuilder.Entity("MyMES.Domain.Products.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -357,7 +386,16 @@ namespace MyMES.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("ChangeLog")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EffectiveFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EffectiveTo")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Notes")
@@ -395,6 +433,35 @@ namespace MyMES.Infrastructure.Migrations
                         .HasDatabaseName("IX_ProductVersions_ProductId_VersionNumber");
 
                     b.ToTable("ProductVersions", "mes");
+                });
+
+            modelBuilder.Entity("MyMES.Domain.Products.RoutingStep", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("ProductVersionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductVersionId", "Sequence")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RoutingSteps_ProductVersionId_Sequence");
+
+                    b.ToTable("RoutingSteps", "mes");
                 });
 
             modelBuilder.Entity("MyMES.Infrastructure.ApplicationRole", b =>
@@ -569,6 +636,32 @@ namespace MyMES.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("MyMES.Domain.Products.BillOfMaterialItem", b =>
+                {
+                    b.HasOne("MyMES.Domain.Products.Product", "ComponentProduct")
+                        .WithMany()
+                        .HasForeignKey("ComponentProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MyMES.Domain.Products.ProductVersion", "ProductVersion")
+                        .WithMany("BomItems")
+                        .HasForeignKey("ProductVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyMES.Domain.Products.RoutingStep", "RoutingStep")
+                        .WithMany("BomItems")
+                        .HasForeignKey("RoutingStepId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ComponentProduct");
+
+                    b.Navigation("ProductVersion");
+
+                    b.Navigation("RoutingStep");
+                });
+
             modelBuilder.Entity("MyMES.Domain.Products.ProductVersion", b =>
                 {
                     b.HasOne("MyMES.Domain.Products.Product", "Product")
@@ -580,9 +673,32 @@ namespace MyMES.Infrastructure.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("MyMES.Domain.Products.RoutingStep", b =>
+                {
+                    b.HasOne("MyMES.Domain.Products.ProductVersion", "ProductVersion")
+                        .WithMany("RoutingSteps")
+                        .HasForeignKey("ProductVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProductVersion");
+                });
+
             modelBuilder.Entity("MyMES.Domain.Products.Product", b =>
                 {
                     b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("MyMES.Domain.Products.ProductVersion", b =>
+                {
+                    b.Navigation("BomItems");
+
+                    b.Navigation("RoutingSteps");
+                });
+
+            modelBuilder.Entity("MyMES.Domain.Products.RoutingStep", b =>
+                {
+                    b.Navigation("BomItems");
                 });
 #pragma warning restore 612, 618
         }
