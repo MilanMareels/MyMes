@@ -34,6 +34,12 @@ public sealed record ProductSummaryDto(
     string? ReleasedVersionNumber,
     int VersionCount);
 
+public sealed record ComponentProductSummaryDto(
+    Guid Id,
+    string ProductCode,
+    string Name,
+    string UnitOfMeasure);
+
 /// <summary>One revision of a product.</summary>
 public sealed record ProductVersionDto(
     Guid Id,
@@ -42,9 +48,28 @@ public sealed record ProductVersionDto(
     ProductVersionStatusDto Status,
     string? Notes,
     string? VersionDescription,
+    DateTime EffectiveFrom,
+    DateTime? EffectiveTo,
+    IReadOnlyList<BillOfMaterialItemDto> BomItems,
+    IReadOnlyList<RoutingStepDto> RoutingSteps,
     DateTime CreatedAtUtc,
     DateTime? ReleasedAtUtc,
     DateTime? ObsoletedAtUtc);
+
+public sealed record BillOfMaterialItemDto(
+    Guid Id,
+    Guid ProductVersionId,
+    Guid ComponentProductId,
+    ComponentProductSummaryDto ComponentProduct,
+    decimal Quantity,
+    Guid? RoutingStepId);
+
+public sealed record RoutingStepDto(
+    Guid Id,
+    Guid ProductVersionId,
+    int Sequence,
+    string Name,
+    string? Description);
 
 /// <summary>Creates a product. An initial draft revision can be created in the same call.</summary>
 public sealed record CreateProductRequest
@@ -94,5 +119,38 @@ public sealed record CreateProductVersionRequest
 
     [StringLength(500)]
     public string? VersionDescription { get; set; }
+
+    public DateTime EffectiveFrom { get; set; }
+
+    public DateTime? EffectiveTo { get; set; }
+
+    /// <summary>The Bill of Materials items for this version.</summary>
+    public List<CreateBillOfMaterialItemRequest> BomItems { get; set; } = new();
+
+    /// <summary>The manufacturing routing steps for this version.</summary>
+    public List<CreateRoutingStepRequest> RoutingSteps { get; set; } = new();
 }
 
+public sealed record CreateBillOfMaterialItemRequest
+{
+    [Required]
+    public Guid ComponentProductId { get; set; }
+
+    public decimal Quantity { get; set; }
+
+    /// <summary>Optional index or reference matching a routing step in the same creation payload.</summary>
+    public int? RoutingStepSequence { get; set; }
+}
+
+public sealed record CreateRoutingStepRequest
+{
+    [Range(1, int.MaxValue)]
+    public int Sequence { get; set; }
+
+    [Required]
+    [StringLength(100, MinimumLength = 1)]
+    public string Name { get; set; } = string.Empty;
+
+    [StringLength(1000)]
+    public string? Description { get; set; }
+}
