@@ -183,7 +183,6 @@
                         <EditForm Model="_newProductVersion" OnValidSubmit="CreateVersionAsync" FormName="create-version">
                             <DataAnnotationsValidator />
                 
-                            <!-- Basisgegevens Versie -->
                             <div class="form-grid">
                                 <div class="field">
                                     <label>Product version number *</label>
@@ -198,11 +197,18 @@
                                     <label>Product version description</label>
                                     <InputText @bind-Value="_newProductVersion.VersionDescription" />
                                 </div>
+                                <div class="field">
+                                    <label>Active from</label>
+                                    <InputDate @bind-Value="_newProductVersion.EffectiveFrom" />
+                                </div>
+                                <div class="field">
+                                    <label>Active to</label>
+                                    <InputDate @bind-Value="_newProductVersion.EffectiveTo" />
+                                </div>
                             </div>
 
                             <hr />
 
-                            <!-- 1. Routing Steps Sectie -->
                             <h3>Routing Steps</h3>
                             @foreach (var step in _newProductVersion.RoutingSteps)
                             {

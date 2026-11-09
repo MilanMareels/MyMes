@@ -10,6 +10,7 @@ using MyMES.Domain.Products;
 using MyMES.Application;
 using System.Security.Cryptography.X509Certificates;
 using System.Runtime.InteropServices.Marshalling;
+using System.Data;
 
 namespace MyMES.Application.Products;
 
@@ -106,7 +107,7 @@ public sealed class ProductService(IRepository<Product> products, IRepository<Pr
         // Creating the first revision here saves a second call for the common case.
         if (!string.IsNullOrWhiteSpace(request.InitialVersionNumber))
         {
-            AddDraftVersion(product, request.InitialVersionNumber, notes: null, versionDescription: null, bomItems: [], routingSteps: []);
+            AddDraftVersion(product, request.InitialVersionNumber, notes: null, versionDescription: null, effectiveFrom: DateTime.MinValue, effectiveTo: null, bomItems: [], routingSteps: []);
         }
 
         products.Add(product);
@@ -173,7 +174,7 @@ public sealed class ProductService(IRepository<Product> products, IRepository<Pr
                 $"Product {product.ProductCode} already has revision {versionNumber}."));
         }
 
-        var version = AddDraftVersion(product, versionNumber, request.Notes, request.VersionDescription, request.BomItems, request.RoutingSteps);
+        var version = AddDraftVersion(product, versionNumber, request.Notes, request.VersionDescription, request.EffectiveFrom, request.EffectiveTo, request.BomItems, request.RoutingSteps);
         await products.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation(
@@ -316,7 +317,7 @@ public sealed class ProductService(IRepository<Product> products, IRepository<Pr
         return Result.Success(product.ToDto());
     }
 
-    private ProductVersion AddDraftVersion(Product product, string versionNumber, string? notes, string? versionDescription, List<CreateBillOfMaterialItemRequest> bomItems, List<CreateRoutingStepRequest> routingSteps)
+    private ProductVersion AddDraftVersion(Product product, string versionNumber, string? notes, string? versionDescription, DateTime effectiveFrom, DateTime? effectiveTo, List<CreateBillOfMaterialItemRequest> bomItems, List<CreateRoutingStepRequest> routingSteps)
     {
         var version = new ProductVersion(Guid.NewGuid())
         {
@@ -324,6 +325,8 @@ public sealed class ProductService(IRepository<Product> products, IRepository<Pr
             VersionNumber = versionNumber.Trim().ToUpperInvariant(),
             Notes = notes?.Trim(),
             VersionDescription = versionDescription?.Trim(),
+            EffectiveFrom = effectiveFrom,
+            EffectiveTo = effectiveTo ?? DateTime.MaxValue,
             Status = ProductVersionStatus.Draft,
             CreatedAtUtc = clock.UtcNow
         };
@@ -372,13 +375,29 @@ public sealed class ProductService(IRepository<Product> products, IRepository<Pr
         return query.Include(p => p.Versions).SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
 
-    private Task<ProductVersion?> LoadVersionAsync(Guid id, bool tracking, CancellationToken cancellationToken)
+    private async Task<ProductVersion?> LoadVersionAsync(Guid id, bool tracking, CancellationToken cancellationToken)
     {
         var query = tracking ? productVersions.Query() : productVersions.Query().AsNoTracking();
-        return query
-            .Include(p => p.BomItems).ThenInclude(b => b.ComponentProduct)
+
+        var productVersion = await query
+            .Include(p => p.BomItems)
+                .ThenInclude(b => b.ComponentProduct)
             .Include(p => p.RoutingSteps)
             .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
+
+        if (productVersion != null)
+        {
+            productVersion.RoutingSteps = productVersion.RoutingSteps
+                .OrderBy(q => q.Sequence)
+                .ToList();
+
+            productVersion.BomItems = productVersion.BomItems
+                .OrderBy(b => productVersion.RoutingSteps
+                    .FirstOrDefault(r => r.Id == b.RoutingStepId)?.Sequence ?? 0)
+                .ToList(); // order id on seq from low to high.
+        }
+
+        return productVersion;
     }
 
     private static Error NotFound(Guid id) =>

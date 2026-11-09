@@ -6,12 +6,45 @@
 
 @if (_productVersion != null)
 {
-    <p>@_productVersion.BomItems.Count()</p>
-    @foreach (var item in _productVersion.BomItems)
-    {
-        <p>@item.Quantity</p>
-    }
-}
+    <PageTitle>Product Version - @_productVersion.VersionNumber</PageTitle>
+
+    <div class="page-head">
+        <div>
+            <h1>BOM for Product Version - @_productVersion.VersionNumber</h1>
+            <p class="muted">The BOM for the product.</p>
+            <span class="badge ok">Active from: @_productVersion.EffectiveFrom to @_productVersion.EffectiveTo</span>
+            <StatusBadge Version="_productVersion.Status" />
+        </div>
+    </div>
+
+    <table class="data">
+        <thead>
+            <tr>
+                <th>Product Code</th>
+                <th>Product Name</th>
+                <th>Product Unit Of Measure</th>
+                <th>Quantity</th>
+                <th>Sequence</th>
+                <th>Step name</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var bom in _productVersion.BomItems)
+            {
+                <tr>
+                    <td class="muted small">@bom.ComponentProduct!.ProductCode</td>
+                    <td class="muted small">@bom.ComponentProduct.Name</td>
+                    <td class="muted small">@bom.ComponentProduct.UnitOfMeasure</td>
+                    <td class="muted small">@bom.Quantity</td>
+                    <td class="muted small">@_productVersion.RoutingSteps.FirstOrDefault(x => x.Id ==
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    bom.RoutingStepId)!.Sequence</td>
+                        <td class="muted small">@_productVersion.RoutingSteps.FirstOrDefault(x => x.Id ==
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        bom.RoutingStepId)!.Name</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
 
 @code {
     [Parameter]
