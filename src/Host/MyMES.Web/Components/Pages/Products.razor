@@ -229,7 +229,6 @@
 
                             <hr />
 
-                            <!-- 2. Bill of Materials (BOM) Sectie -->
                             <h3>Bill of Materials</h3>
                             @foreach (var item in _newProductVersion.BomItems)
                             {
@@ -242,7 +241,10 @@
                                             {
                                                 @foreach (var p in _availableProducts)
                                                 {
-                                                    <option value="@p.Id">@p.ProductCode - @p.Name</option>
+                                                    @if (p.Id != _selected.Id)
+                                                    {
+                                                        <option value="@p.Id">@p.ProductCode - @p.Name</option>
+                                                    }
                                                 }
                                             }
                                         </InputSelect>
@@ -374,6 +376,7 @@
         try
         {
             _products = await Api.GetProductsAsync(activeOnly: _activeOnly, search: _search);
+            _availableProducts = _products?.Items;
             _error = null;
         }
         catch (Exception ex)
@@ -437,8 +440,7 @@
         
         try
         {
-            var result = await Api.GetProductsAsync();
-            _availableProducts = result?.Items;
+            //_availableProducts = _products.Items;
         }
         catch (Exception ex)
         {
