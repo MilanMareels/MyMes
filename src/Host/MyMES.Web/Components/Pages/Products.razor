@@ -337,6 +337,15 @@
                                                 </button>
                                             </Authorized>
                                         </AuthorizeView>
+                                        <AuthorizeView Roles="Administrator,Planner">
+                                            <Authorized>
+                                                <NavLink href=@($"/products-version-details/{version.Id}")>
+                                                    <button type="button" class="btn ghost sm" disabled="@_busy">
+                                                        Details
+                                                    </button>
+                                                </NavLink>
+                                            </Authorized>
+                                        </AuthorizeView>
                                     }
                                 </td>
                             </tr>

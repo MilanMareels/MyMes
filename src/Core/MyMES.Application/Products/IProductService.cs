@@ -43,4 +43,6 @@ public interface IProductService
     Task<Result<ProductDto>> DeactivateAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<Result<ProductDto>> ActivateAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<Result<ProductVersionDto>> GetProductVersionDetails(Guid id, CancellationToken cancellationToken = default);
 }

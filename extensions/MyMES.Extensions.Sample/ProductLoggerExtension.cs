@@ -84,4 +84,7 @@ internal sealed class ProductLoggingDecorator(IProductService inner, ILogger<Pro
 
     public Task<Result<ProductDto>> ActivateAsync(Guid id, CancellationToken cancellationToken = default) =>
         inner.ActivateAsync(id, cancellationToken);
+
+    public Task<Result<ProductVersionDto>> GetProductVersionDetails(Guid id, CancellationToken cancellationToken = default)
+        => inner.GetProductVersionDetails(id, cancellationToken);
 }

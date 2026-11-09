@@ -77,8 +77,8 @@ public sealed class ProductVersion : Entity
 
     public string? ChangeLog { get; set; }
 
-    public ICollection<BillOfMaterialItem> BomItems { get; set; } = new List<BillOfMaterialItem>();
-    public ICollection<RoutingStep> RoutingSteps { get; set; } = new List<RoutingStep>();
+    public List<BillOfMaterialItem> BomItems { get; set; } = new List<BillOfMaterialItem>();
+    public List<RoutingStep> RoutingSteps { get; set; } = new List<RoutingStep>();
 
     public DateTime CreatedAtUtc { get; set; }
 

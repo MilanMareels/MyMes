@@ -1,0 +1,42 @@
+@page "/products-version-details/{versionId:guid}"
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+@inject MyMesApiClient Api
+
+@if (_productVersion != null)
+{
+    <p>@_productVersion.BomItems.Count()</p>
+    @foreach (var item in _productVersion.BomItems)
+    {
+        <p>@item.Quantity</p>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid versionId { get; set; }
+    public ProductVersionDto _productVersion { get; set; } = null;
+    private bool _loading = true;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _productVersion = await Api.GetProductVersionDetails(versionId);
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

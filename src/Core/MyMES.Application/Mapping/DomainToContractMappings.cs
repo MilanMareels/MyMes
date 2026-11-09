@@ -92,7 +92,7 @@ public static class DomainToContractMappings
         billOfMaterialItem.Id,
         billOfMaterialItem.ProductVersionId,
         billOfMaterialItem.ComponentProductId,
-        billOfMaterialItem.ComponentProduct.ToComponentSummaryDto(),
+        billOfMaterialItem.ComponentProduct?.ToComponentSummaryDto(),
         billOfMaterialItem.Quantity,
         billOfMaterialItem.RoutingStepId
     );

@@ -67,4 +67,9 @@ public sealed class ProductsController(IProductService products) : ApiController
     [Authorize(MesPermissions.ProductsWrite)]
     public async Task<IActionResult> Activate(Guid id, CancellationToken cancellationToken) =>
         ToOk(await products.ActivateAsync(id, cancellationToken));
+
+    [HttpGet("version/{id:guid}")]
+    [Authorize(MesPermissions.ProductsRead)]
+    public async Task<IActionResult> GetProductVersionDetails(Guid id, CancellationToken cancellationToken)
+        => ToOk(await products.GetProductVersionDetails(id, cancellationToken));
 }

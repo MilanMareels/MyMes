@@ -60,7 +60,7 @@ public sealed record BillOfMaterialItemDto(
     Guid Id,
     Guid ProductVersionId,
     Guid ComponentProductId,
-    ComponentProductSummaryDto ComponentProduct,
+    ComponentProductSummaryDto? ComponentProduct,
     decimal Quantity,
     Guid? RoutingStepId);
 
