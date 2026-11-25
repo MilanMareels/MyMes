@@ -1,6 +1,6 @@
-using MyMES.Abstractions.Results;
-using MyMES.Contracts.Common;
-using MyMES.Contracts.Products;
+using MyMES.Application.Results;
+using MyMES.Application.Common;
+using MyMES.Application.Products;
 
 namespace MyMES.Application.Products;
 
@@ -43,4 +43,6 @@ public interface IProductService
     Task<Result<ProductDto>> DeactivateAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<Result<ProductDto>> ActivateAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<Result<ProductVersionDto>> GetProductVersionDetails(Guid id, CancellationToken cancellationToken = default);
 }

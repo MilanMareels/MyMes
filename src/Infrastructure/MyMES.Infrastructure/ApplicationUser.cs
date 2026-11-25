@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 
-namespace MyMES.Identity;
+namespace MyMES.Infrastructure;
 
 /// <summary>
 /// A sign-in account.

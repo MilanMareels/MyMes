@@ -1,4 +1,4 @@
-namespace MyMES.Abstractions.Time;
+namespace MyMES.Application.Time;
 
 /// <summary>
 /// Supplies the current time. Everything that stamps a record goes through this so that the

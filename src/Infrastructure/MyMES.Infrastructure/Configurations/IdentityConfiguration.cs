@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using MyMES.Identity;
+using MyMES.Infrastructure;
 
-namespace MyMES.Persistence.Configurations;
+namespace MyMES.Infrastructure.Configurations;
 
 /// <summary>
 /// Gives the Identity tables explicit names in their own schema.

@@ -1,8 +1,8 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MyMES.Abstractions.Security;
-using MyMES.Contracts.Dashboard;
+using MyMES.Application.Security;
+using MyMES.Application.Dashboard;
 using MyMES.PluginSystem;
 
 namespace MyMES.Api.Controllers;
@@ -23,6 +23,6 @@ public sealed class PlatformController(IModuleRegistry registry, IHostEnvironmen
             version,
             environment.EnvironmentName,
             [.. registry.Modules.Select(m => new ModuleInfoDto(m.Name, m.Order, m.AssemblyName))],
-            registry.Plugins));
+            registry.Extensions));
     }
 }

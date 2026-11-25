@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace MyMES.EventBus;
+namespace MyMES.Application;
 
 /// <summary>
 /// Handles one kind of event. Register as many handlers per event as needed; they all run.

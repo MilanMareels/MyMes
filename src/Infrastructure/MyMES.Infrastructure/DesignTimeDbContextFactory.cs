@@ -2,11 +2,11 @@ using System.IO;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using MyMES.Abstractions.Security;
-using MyMES.Abstractions.Time;
-using MyMES.EventBus;
+using MyMES.Application.Security;
+using MyMES.Application.Time;
+using MyMES.Application;
 
-namespace MyMES.Persistence;
+namespace MyMES.Infrastructure;
 
 /// <summary>
 /// Builds a context for <c>dotnet ef</c> without starting the application.

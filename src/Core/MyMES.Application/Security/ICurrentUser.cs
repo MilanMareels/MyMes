@@ -1,4 +1,4 @@
-namespace MyMES.Abstractions.Security;
+namespace MyMES.Application.Security;
 
 /// <summary>
 /// The user behind the current operation, resolved by the host from the request context.

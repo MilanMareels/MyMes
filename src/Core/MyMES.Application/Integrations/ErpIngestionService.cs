@@ -1,13 +1,12 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using MyMES.Abstractions.Results;
-using MyMES.Abstractions.Time;
+using MyMES.Application.Results;
+using MyMES.Application.Time;
 using MyMES.Application.Data;
 using MyMES.Application.Mapping;
 using MyMES.Application.Products;
-using MyMES.Contracts.Integrations;
-using MyMES.Contracts.Products;
+using MyMES.Application.Integrations;
 using MyMES.Domain.Integrations;
 
 namespace MyMES.Application.Integrations;

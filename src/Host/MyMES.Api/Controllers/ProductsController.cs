@@ -1,10 +1,9 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MyMES.Abstractions.Security;
+using MyMES.Application.Security;
 using MyMES.Application.Products;
-using MyMES.Contracts.Common;
-using MyMES.Contracts.Products;
+using MyMES.Application.Common;
 
 namespace MyMES.Api.Controllers;
 
@@ -16,12 +15,7 @@ public sealed class ProductsController(IProductService products) : ApiController
 {
     [HttpGet]
     [Authorize(MesPermissions.ProductsRead)]
-    public async Task<IActionResult> List(
-        int? page,
-        int? pageSize,
-        bool? activeOnly,
-        string? search,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> List(int? page, int? pageSize, bool? activeOnly, string? search, CancellationToken cancellationToken)
     {
         var request = new PageRequest { Page = page ?? 1, PageSize = pageSize ?? 25 };
         return Ok(await products.GetAsync(request, activeOnly, search, cancellationToken));
@@ -73,4 +67,9 @@ public sealed class ProductsController(IProductService products) : ApiController
     [Authorize(MesPermissions.ProductsWrite)]
     public async Task<IActionResult> Activate(Guid id, CancellationToken cancellationToken) =>
         ToOk(await products.ActivateAsync(id, cancellationToken));
+
+    [HttpGet("version/{id:guid}")]
+    [Authorize(MesPermissions.ProductsRead)]
+    public async Task<IActionResult> GetProductVersionDetails(Guid id, CancellationToken cancellationToken)
+        => ToOk(await products.GetProductVersionDetails(id, cancellationToken));
 }

@@ -25,7 +25,9 @@
 @if (_creating)
 {
     <div class="panel">
-        <div class="panel-head"><h2>Create a product</h2></div>
+        <div class="panel-head">
+            <h2>Create a product</h2>
+        </div>
         <div class="panel-body">
             <EditForm Model="_newProduct" OnValidSubmit="CreateAsync" FormName="create-product">
                 <DataAnnotationsValidator />
@@ -118,8 +120,7 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <button type="button" class="btn ghost sm"
-                                            @onclick="() => OpenAsync(product.Id)">
+                                    <button type="button" class="btn ghost sm" @onclick="() => OpenAsync(product.Id)">
                                         Versions
                                     </button>
                                     @if (!product.IsActive)
@@ -175,17 +176,114 @@
             @if (_creatingVersion)
             {
                 <div class="panel">
-                    <div class="panel-head"><h2>Create a version</h2></div>
+                    <div class="panel-head">
+                        <h2>Create a version</h2>
+                    </div>
                     <div class="panel-body">
                         <EditForm Model="_newProductVersion" OnValidSubmit="CreateVersionAsync" FormName="create-version">
                             <DataAnnotationsValidator />
+                
                             <div class="form-grid">
                                 <div class="field">
-                                    <label>Product version number</label>
-                                    <InputText @bind-value="_newProductVersion.VersionNumber" placeholder="1" />
+                                    <label>Product version number *</label>
+                                    <InputText @bind-Value="_newProductVersion.VersionNumber" placeholder="e.g. 1.0" />
+                                    <ValidationMessage For="@(() => _newProductVersion.VersionNumber)" />
+                                </div>
+                                <div class="field">
+                                    <label>Product version notes</label>
+                                    <InputText @bind-Value="_newProductVersion.Notes" />
+                                </div>
+                                <div class="field">
+                                    <label>Product version description</label>
+                                    <InputText @bind-Value="_newProductVersion.VersionDescription" />
+                                </div>
+                                <div class="field">
+                                    <label>Active from</label>
+                                    <InputDate @bind-Value="_newProductVersion.EffectiveFrom" />
+                                </div>
+                                <div class="field">
+                                    <label>Active to</label>
+                                    <InputDate @bind-Value="_newProductVersion.EffectiveTo" />
                                 </div>
                             </div>
-                            <button type="submit" class="btn primary" disabled="@_busy">Create</button>
+
+                            <hr />
+
+                            <h3>Routing Steps</h3>
+                            @foreach (var step in _newProductVersion.RoutingSteps)
+                            {
+                                <div class="form-grid inline-row" style="margin-bottom: 8px;">
+                                    <div class="field" style="width: 80px;">
+                                        <label>Seq</label>
+                                        <InputNumber @bind-Value="step.Sequence" min="1" />
+                                    </div>
+                                    <div class="field">
+                                        <label>Step Name *</label>
+                                        <InputText @bind-Value="step.Name" placeholder="e.g. Assembly" />
+                                    </div>
+                                    <div class="field">
+                                        <label>Description</label>
+                                        <InputText @bind-Value="step.Description" />
+                                    </div>
+                                    <div class="field actions" style="align-self: flex-end;">
+                                        <button type="button" class="btn danger"
+                                                @onclick="() => RemoveRoutingStep(step)">Remove</button>
+                                    </div>
+                                </div>
+                            }
+                            <button type="button" class="btn secondary" @onclick="AddRoutingStep">+ Add Routing Step</button>
+
+                            <hr />
+
+                            <h3>Bill of Materials</h3>
+                            @foreach (var item in _newProductVersion.BomItems)
+                            {
+                                <div class="form-grid inline-row" style="margin-bottom: 8px;">
+                                    <div class="field">
+                                        <label>Component Product *</label>
+                                        <InputSelect @bind-Value="item.ComponentProductId">
+                                            <option value="@Guid.Empty">-- Select Component --</option>
+                                            @if (_availableProducts != null)
+                                            {
+                                                @foreach (var p in _availableProducts)
+                                                {
+                                                    @if (p.Id != _selected.Id)
+                                                    {
+                                                        <option value="@p.Id">@p.ProductCode - @p.Name</option>
+                                                    }
+                                                }
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                    <div class="field" style="width: 120px;">
+                                        <label>Quantity *</label>
+                                        <InputNumber @bind-Value="item.Quantity" step="any" />
+                                    </div>
+                                    <div class="field">
+                                        <label>Routing Step (Seq)</label>
+                                        <InputSelect @bind-Value="item.RoutingStepSequence">
+                                            <option value="">-- None / Unassigned --</option>
+                                            @foreach (var step in _newProductVersion.RoutingSteps)
+                                            {
+                                                <option value="@step.Sequence">Step @step.Sequence: @step.Name</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                    <div class="field actions" style="align-self: flex-end;">
+                                        <button type="button" class="btn danger"
+                                                @onclick="() => RemoveBomItem(item)">Remove</button>
+                                    </div>
+                                </div>
+                            }
+                            <button type="button" class="btn secondary" @onclick="AddBomItem">+ Add Component</button>
+
+                            <hr />
+
+                            <div style="margin-top: 16px;">
+                                <button type="submit" class="btn primary" disabled="@_busy">Create Version</button>
+                                <button type="button" class="btn secondary"
+                                        @onclick="() => _creatingVersion = false">Cancel</button>
+                            </div>
                         </EditForm>
                     </div>
                 </div>
@@ -193,8 +291,7 @@
 
             @if (_selected.Versions.Count == 0)
             {
-                <EmptyState Title="No version yet"
-                            Message="Add a draft revision before raising orders against this product." />
+                <EmptyState Title="No version yet" Message="Add a draft revision before raising orders against this product." />
             }
             else
             {
@@ -206,6 +303,7 @@
                             <th>Created</th>
                             <th>Released</th>
                             <th>Notes</th>
+                            <th>Description</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -214,12 +312,15 @@
                         {
                             <tr>
                                 <td><strong>@version.VersionNumber</strong></td>
-                                <td><StatusBadge Version="version.Status" /></td>
+                                <td>
+                                    <StatusBadge Version="version.Status" />
+                                </td>
                                 <td class="muted small">@version.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yy HH:mm")</td>
                                 <td class="muted small">
                                     @(version.ReleasedAtUtc?.ToLocalTime().ToString("dd/MM/yy HH:mm") ?? "-")
                                 </td>
                                 <td class="muted small">@version.Notes</td>
+                                <td class="muted small">@version.VersionDescription</td>
                                 <td>
                                     @if (version.Status == ProductVersionStatusDto.Draft)
                                     {
@@ -240,6 +341,15 @@
                                                         @onclick="() => ObsoleteVersionAsync(version.Id)">
                                                     Obsolete
                                                 </button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                        <AuthorizeView Roles="Administrator,Planner">
+                                            <Authorized>
+                                                <NavLink href=@($"/products-version-details/{version.Id}")>
+                                                    <button type="button" class="btn ghost sm" disabled="@_busy">
+                                                        Details
+                                                    </button>
+                                                </NavLink>
                                             </Authorized>
                                         </AuthorizeView>
                                     }
@@ -270,7 +380,8 @@
 
     private CreateProductRequest _newProduct = new();
     private CreateProductVersionRequest _newProductVersion = new();
-    private string? _newVersionNumber;
+
+    private IReadOnlyList<ProductSummaryDto>? _availableProducts;
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
@@ -280,6 +391,7 @@
         try
         {
             _products = await Api.GetProductsAsync(activeOnly: _activeOnly, search: _search);
+            _availableProducts = _products?.Items;
             _error = null;
         }
         catch (Exception ex)
@@ -337,6 +449,49 @@
         }
     }
 
+    private async Task StartCreateVersionAsync()
+    {
+        _newProductVersion = new CreateProductVersionRequest();
+        
+        try
+        {
+            //_availableProducts = _products.Items;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+
+        _creatingVersion = true;
+    }
+
+    private void AddRoutingStep()
+    {
+        int nextSequence = (_newProductVersion.RoutingSteps.Max(s => (int?)s.Sequence) ?? 0) + 10;
+        _newProductVersion.RoutingSteps.Add(new CreateRoutingStepRequest
+        {
+            Sequence = nextSequence
+        });
+    }
+
+    private void RemoveRoutingStep(CreateRoutingStepRequest step)
+    {
+        _newProductVersion.RoutingSteps.Remove(step);
+    }
+
+    private void AddBomItem()
+    {
+        _newProductVersion.BomItems.Add(new CreateBillOfMaterialItemRequest
+        {
+            Quantity = 1.0m
+        });
+    }
+
+    private void RemoveBomItem(CreateBillOfMaterialItemRequest item)
+    {
+        _newProductVersion.BomItems.Remove(item);
+    }
+
     private async Task CreateVersionAsync()
     {
         if (_selected == null)
@@ -345,16 +500,9 @@
         _busy = true;
         try
         {
-            var newVersion = new CreateProductVersionRequest
-                {
-                    VersionNumber = _newProductVersion.VersionNumber,
-                    Notes = _newProductVersion.Notes
-                };
-
-            await Api.AddProductVersionAsync(_selected.Id, newVersion);
+            await Api.AddProductVersionAsync(_selected.Id, _newProductVersion);
 
             _creatingVersion = false;
-            _newVersionNumber = null;
 
             await OpenAsync(_selected.Id);
             await LoadAsync();

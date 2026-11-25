@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MyMES.Domain.Products;
 
-namespace MyMES.Persistence.Configurations;
+namespace MyMES.Infrastructure.Configurations;
 
 internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
@@ -73,6 +73,9 @@ internal sealed class ProductVersionConfiguration : IEntityTypeConfiguration<Pro
             .IsRequired();
 
         builder.Property(v => v.Notes).HasMaxLength(2000);
+
+        builder.Property(v => v.VersionDescription).HasMaxLength(500);
+
         builder.Property(v => v.CreatedAtUtc).IsRequired();
 
         // A revision label is unique within its product, not across the catalogue.
@@ -83,6 +86,16 @@ internal sealed class ProductVersionConfiguration : IEntityTypeConfiguration<Pro
         // Production orders look up the released revision of a product constantly.
         builder.HasIndex(v => new { v.ProductId, v.Status })
             .HasDatabaseName("IX_ProductVersions_ProductId_Status");
+
+        builder.HasMany(v => v.RoutingSteps)
+                .WithOne(r => r.ProductVersion)
+                .HasForeignKey(r => r.ProductVersionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(v => v.BomItems)
+            .WithOne(b => b.ProductVersion!)
+            .HasForeignKey(b => b.ProductVersionId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.Ignore(v => v.DomainEvents);
     }

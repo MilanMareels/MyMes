@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Http;
-using MyMES.Abstractions.Results;
+using MyMES.Application.Results;
 
 namespace MyMES.PluginSystem.Http;
 

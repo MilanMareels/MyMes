@@ -1,6 +1,6 @@
 using FluentValidation;
-using MyMES.Contracts.Production;
-using MyMES.Contracts.Products;
+using MyMES.Application.Production;
+using MyMES.Application.Products;
 
 namespace MyMES.Application.Validation;
 

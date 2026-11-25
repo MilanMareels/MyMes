@@ -4,10 +4,10 @@ using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using MyMES.Abstractions.Security;
-using MyMES.Abstractions.Time;
-using MyMES.Contracts.Identity;
-using MyMES.Identity;
+using MyMES.Application.Security;
+using MyMES.Application.Time;
+using MyMES.Application.Identity;
+using MyMES.Infrastructure;
 
 namespace MyMES.Api.Security;
 

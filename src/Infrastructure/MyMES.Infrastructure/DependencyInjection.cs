@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MyMES.Application.Data;
 
-namespace MyMES.Persistence;
+namespace MyMES.Infrastructure;
 
 /// <summary>Options controlling how the database is reached and migrated.</summary>
 public sealed class DatabaseOptions

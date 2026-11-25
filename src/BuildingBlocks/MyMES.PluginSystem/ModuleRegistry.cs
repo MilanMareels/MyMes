@@ -1,63 +1,60 @@
-﻿using System.Reflection;
+using System.Reflection;
+using System.Runtime.Loader;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MyMES.Abstractions.Modules;
+using MyMES.Application.Modules;
 
 namespace MyMES.PluginSystem;
 
 /// <summary>What the host loaded at start-up, available for diagnostics at run time.</summary>
 public sealed record LoadedModule(string Name, int Order, string AssemblyName);
 
-/// <summary>The modules and plugins this process is running with.</summary>
+/// <summary>The modules and extensions this process is running with.</summary>
 public interface IModuleRegistry
 {
     IReadOnlyList<LoadedModule> Modules { get; }
 
-    IReadOnlyList<string> Plugins { get; }
+    IReadOnlyList<string> Extensions { get; }
 }
 
-internal sealed class ModuleRegistry(IReadOnlyList<LoadedModule> modules, IReadOnlyList<string> plugins)
+internal sealed class ModuleRegistry(IReadOnlyList<LoadedModule> modules, IReadOnlyList<string> extensions)
     : IModuleRegistry
 {
     public IReadOnlyList<LoadedModule> Modules { get; } = modules;
 
-    public IReadOnlyList<string> Plugins { get; } = plugins;
+    public IReadOnlyList<string> Extensions { get; } = extensions;
 }
 
 public static class ModuleRegistrationExtensions
 {
     /// <summary>
-    /// Discovers and registers every module and plugin in the given assemblies.
+    /// Discovers and registers every module and extension automatically.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Modules run first, in <see cref="IMyMesModule.Order"/> sequence, then plugins. That order
-    /// is the whole point: by the time a plugin's <c>ConfigureServices</c> runs, every default it
+    /// Modules run first, in <see cref="IMyMesModule.Order"/> sequence, then extensions. That order
+    /// is the whole point: by the time an extension's <c>ConfigureServices</c> runs, every default it
     /// might want to replace or decorate is already registered.
     /// </para>
     /// <para>
-    /// Discovery is over assemblies the host already references. Loading arbitrary DLLs from a
-    /// directory is deliberately not done here; see <see cref="IMyMesPlugin"/> on why that is a
-    /// deployment decision rather than a security boundary.
+    /// Assemblies are found automatically: every <c>MyMES*.dll</c> next to the host. Add a new
+    /// extension project and it is picked up without any registration code.
     /// </para>
     /// </remarks>
     /// <param name="services">Container being built.</param>
     /// <param name="configuration">Host configuration, handed to each module.</param>
     /// <param name="platformVersion">Version the host advertises, for compatibility warnings.</param>
     /// <param name="logger">Receives what was loaded and what was skipped.</param>
-    /// <param name="assemblies">Assemblies to scan.</param>
     public static IServiceCollection AddMyMesModules(
         this IServiceCollection services,
         IConfiguration configuration,
         string platformVersion,
-        ILogger logger,
-        params Assembly[] assemblies)
+        ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(assemblies);
 
-        var distinct = assemblies.Where(a => a is not null).Distinct().ToArray();
+        var distinct = DiscoverPluginAssemblies(logger);
 
         var modules = Instantiate<IMyMesModule>(distinct, logger)
             .OrderBy(m => m.Order)
@@ -81,39 +78,69 @@ public static class ModuleRegistrationExtensions
             logger.LogInformation("Module {Module} registered (order {Order}).", module.Name, module.Order);
         }
 
-        var plugins = Instantiate<IMyMesPlugin>(distinct, logger)
+        var extensions = Instantiate<IMyMesExtension>(distinct, logger)
             .OrderBy(p => p.Name, StringComparer.Ordinal)
             .ToList();
 
-        var pluginNames = new List<string>(plugins.Count);
+        var extensionNames = new List<string>(extensions.Count);
 
-        foreach (var plugin in plugins)
+        foreach (var extension in extensions)
         {
-            if (!IsCompatible(plugin.CompatiblePlatformVersion, platformVersion))
+            if (!IsCompatible(extension.CompatiblePlatformVersion, platformVersion))
             {
                 logger.LogWarning(
-                    "Plugin {Plugin} {Version} targets platform {Target} but this host is {Actual}. "
+                    "Extension {Extension} {Version} targets platform {Target} but this host is {Actual}. "
                     + "Loading it anyway; verify it behaves.",
-                    plugin.Name,
-                    plugin.Version,
-                    plugin.CompatiblePlatformVersion,
+                    extension.Name,
+                    extension.Version,
+                    extension.CompatiblePlatformVersion,
                     platformVersion);
             }
 
-            plugin.ConfigureServices(services, configuration);
+            extension.ConfigureServices(services, configuration);
 
-            if (plugin is IEndpointModule endpointPlugin)
+            if (extension is IEndpointModule endpointExtension)
             {
-                services.AddSingleton<IEndpointModule>(endpointPlugin);
+                services.AddSingleton<IEndpointModule>(endpointExtension);
             }
 
-            pluginNames.Add($"{plugin.Name} {plugin.Version}");
-            logger.LogInformation("Plugin {Plugin} {Version} registered.", plugin.Name, plugin.Version);
+            extensionNames.Add($"{extension.Name} {extension.Version}");
+            logger.LogInformation("Extension {Extension} {Version} registered.", extension.Name, extension.Version);
         }
 
-        services.AddSingleton<IModuleRegistry>(new ModuleRegistry(loaded, pluginNames));
+        services.AddSingleton<IModuleRegistry>(new ModuleRegistry(loaded, extensionNames));
 
         return services;
+    }
+
+    /// <summary>
+    /// Finds every MyMES assembly next to the host's own DLLs. Because referenced projects are
+    /// copied there on build, a new extension project is picked up automatically.
+    /// </summary>
+    private static Assembly[] DiscoverPluginAssemblies(ILogger logger)
+    {
+        var result = new List<Assembly>();
+
+        var baseDirectory = AppContext.BaseDirectory;
+        if (Directory.Exists(baseDirectory))
+        {
+            foreach (var path in Directory.EnumerateFiles(baseDirectory, "MyMES*.dll", SearchOption.TopDirectoryOnly))
+            {
+                try
+                {
+                    result.Add(AssemblyLoadContext.Default.LoadFromAssemblyPath(Path.GetFullPath(path)));
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Could not load assembly {Path}.", path);
+                }
+            }
+        }
+
+        return result
+            .GroupBy(a => a.GetName().Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .ToArray();
     }
 
     /// <summary>

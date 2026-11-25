@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace MyMES.Contracts.Production;
+namespace MyMES.Application.Production;
 
 /// <summary>Production order status as published on the wire.</summary>
 public enum ProductionOrderStatusDto

@@ -1,14 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using MyMES.Abstractions.Results;
-using MyMES.Abstractions.Time;
+using MyMES.Application.Results;
+using MyMES.Application.Time;
 using MyMES.Application.Data;
 using MyMES.Application.Mapping;
-using MyMES.Contracts.Common;
-using MyMES.Contracts.Production;
+using MyMES.Application.Common;
+using MyMES.Application.Production;
 using MyMES.Domain.Production;
 using MyMES.Domain.Products;
-using MyMES.EventBus;
+using MyMES.Application;
 
 namespace MyMES.Application.Production;
 

@@ -1,4 +1,4 @@
-﻿namespace MyMES.Contracts.Common;
+﻿namespace MyMES.Application.Common;
 
 /// <summary>A page of results together with the information needed to request the next one.</summary>
 /// <typeparam name="T">Item type.</typeparam>

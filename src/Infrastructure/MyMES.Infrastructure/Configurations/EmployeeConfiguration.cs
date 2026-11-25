@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MyMES.Domain.Personnel;
 
-namespace MyMES.Persistence.Configurations;
+namespace MyMES.Infrastructure.Configurations;
 
 internal sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
 {

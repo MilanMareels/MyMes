@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using MyMES.Abstractions.Time;
+using MyMES.Application.Time;
 using MyMES.Application.Data;
-using MyMES.Contracts.Dashboard;
+using MyMES.Application.Dashboard;
 using MyMES.Domain.Production;
 using MyMES.Domain.Products;
 

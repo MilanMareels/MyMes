@@ -1,4 +1,4 @@
-namespace MyMES.Abstractions.Security;
+namespace MyMES.Application.Security;
 
 /// <summary>
 /// The rights the platform knows about, issued as claims of type <see cref="ClaimType"/>.

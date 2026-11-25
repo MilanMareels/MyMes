@@ -1,15 +1,14 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MyMES.Abstractions.Results;
+using MyMES.Application.Results;
 using MyMES.Application.Products;
-using MyMES.Contracts.Common;
-using MyMES.Contracts.Products;
+using MyMES.Application.Common;
 using MyMES.PluginSystem;
 
 namespace MyMES.Extensions.Sample;
 
-public sealed class ProductLoggerPlugin : IMyMesPlugin
+public sealed class ProductLoggerExtension : IMyMesExtension
 {
     public string Name => "Product logger";
 
@@ -28,7 +27,7 @@ public sealed class ProductLoggerPlugin : IMyMesPlugin
     }
 }
 
-internal sealed class ProductLoggingDecorator(IProductService inner,ILogger<ProductLoggingDecorator> logger) : IProductService
+internal sealed class ProductLoggingDecorator(IProductService inner, ILogger<ProductLoggingDecorator> logger) : IProductService
 {
     public async Task<Result<ProductDto>> CreateAsync(CreateProductRequest request, CancellationToken cancellationToken = default)
     {
@@ -36,10 +35,7 @@ internal sealed class ProductLoggingDecorator(IProductService inner,ILogger<Prod
 
         if (result.IsSuccess)
         {
-            logger.LogInformation(
-                "[product-logger] Product {Code} ('{Name}') aangemaakt.",
-                result.Value.ProductCode,
-                result.Value.Name);
+            logger.LogInformation("[product-logger-extension] Product {Code} ('{Name}') aangemaakt.", result.Value.ProductCode, result.Value.Name);
         }
 
         return result;
@@ -88,4 +84,7 @@ internal sealed class ProductLoggingDecorator(IProductService inner,ILogger<Prod
 
     public Task<Result<ProductDto>> ActivateAsync(Guid id, CancellationToken cancellationToken = default) =>
         inner.ActivateAsync(id, cancellationToken);
+
+    public Task<Result<ProductVersionDto>> GetProductVersionDetails(Guid id, CancellationToken cancellationToken = default)
+        => inner.GetProductVersionDetails(id, cancellationToken);
 }

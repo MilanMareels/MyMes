@@ -3,7 +3,7 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace MyMES.EventBus;
+namespace MyMES.Application;
 
 /// <summary>
 /// Dispatches events to handlers resolved from the container, in the caller's scope.

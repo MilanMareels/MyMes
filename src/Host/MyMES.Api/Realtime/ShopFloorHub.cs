@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using MyMES.Contracts.Production;
-using MyMES.Messaging;
+using MyMES.Application.Production;
+using MyMES.Infrastructure;
 
 namespace MyMES.Api.Realtime;
 

@@ -1,6 +1,6 @@
-using MyMES.Contracts.Integrations;
-using MyMES.Contracts.Production;
-using MyMES.Contracts.Products;
+using MyMES.Application.Integrations;
+using MyMES.Application.Production;
+using MyMES.Application.Products;
 using MyMES.Domain.Integrations;
 using MyMES.Domain.Production;
 using MyMES.Domain.Products;
@@ -74,14 +74,42 @@ public static class DomainToContractMappings
     };
 
     public static ProductVersionDto ToDto(this ProductVersion version) => new(
-        version.Id,
-        version.ProductId,
-        version.VersionNumber,
-        version.Status.ToDto(),
-        version.Notes,
-        version.CreatedAtUtc,
-        version.ReleasedAtUtc,
-        version.ObsoletedAtUtc);
+    version.Id,
+    version.ProductId,
+    version.VersionNumber,
+    version.Status.ToDto(),
+    version.Notes,
+    version.VersionDescription,
+    version.EffectiveFrom,
+    version.EffectiveTo,
+    version.BomItems.Select(item => item.ToDto()).ToList(),
+    version.RoutingSteps.Select(step => step.ToDto()).ToList(),
+    version.CreatedAtUtc,
+    version.ReleasedAtUtc,
+    version.ObsoletedAtUtc);
+
+    public static BillOfMaterialItemDto ToDto(this BillOfMaterialItem billOfMaterialItem) => new(
+        billOfMaterialItem.Id,
+        billOfMaterialItem.ProductVersionId,
+        billOfMaterialItem.ComponentProductId,
+        billOfMaterialItem.ComponentProduct?.ToComponentSummaryDto(),
+        billOfMaterialItem.Quantity,
+        billOfMaterialItem.RoutingStepId
+    );
+
+    public static RoutingStepDto ToDto(this RoutingStep step) => new(
+        step.Id,
+        step.ProductVersionId,
+        step.Sequence,
+        step.Name,
+        step.Description);
+
+    public static ComponentProductSummaryDto ToComponentSummaryDto(this Product product) => new(
+        product.Id,
+        product.ProductCode,
+        product.Name,
+        product.UnitOfMeasure);
+
 
     public static ProductDto ToDto(this Product product)
     {

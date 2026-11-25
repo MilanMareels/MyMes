@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
-using MyMES.Abstractions.Security;
+using MyMES.Application.Security;
 using MyMES.Api;
 using MyMES.Api.BackgroundServices;
 using MyMES.Api.ExceptionHandling;
@@ -15,10 +15,7 @@ using MyMES.Api.Extensions;
 using MyMES.Api.Realtime;
 using MyMES.Api.Security;
 using MyMES.Application;
-using MyMES.Identity;
 using MyMES.Infrastructure;
-using MyMES.Messaging;
-using MyMES.Persistence;
 using MyMES.PluginSystem;
 using Serilog;
 using Serilog.Events;
@@ -107,11 +104,12 @@ try
     // Module discovery runs before the host exists, so it needs a logger of its own.
     using var startupLoggerFactory = LoggerFactory.Create(logging => logging.AddSerilog(Log.Logger));
 
+    // Extensions are discovered automatically: every MyMES project next to the host's own DLLs.
+    // Adding an extension never requires an edit here.
     builder.Services.AddMyMesModules(
         builder.Configuration,
         platformVersion,
-        startupLoggerFactory.CreateLogger("MyMES.Modules"),
-        typeof(MyMES.Extensions.Sample.SampleExtensionPlugin).Assembly);
+        startupLoggerFactory.CreateLogger("MyMES.Modules"));
 
     builder.Services.AddMyMesAuthorization(permissionCatalog);
 

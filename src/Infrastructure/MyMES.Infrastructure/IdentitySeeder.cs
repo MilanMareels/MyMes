@@ -2,9 +2,9 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MyMES.Abstractions.Security;
+using MyMES.Application.Security;
 
-namespace MyMES.Identity;
+namespace MyMES.Infrastructure;
 
 /// <summary>
 /// Credentials for the very first administrator.

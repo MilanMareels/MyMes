@@ -3,12 +3,12 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using MyMES.Contracts.Common;
-using MyMES.Contracts.Dashboard;
-using MyMES.Contracts.Identity;
-using MyMES.Contracts.Integrations;
-using MyMES.Contracts.Production;
-using MyMES.Contracts.Products;
+using MyMES.Application.Common;
+using MyMES.Application.Dashboard;
+using MyMES.Application.Identity;
+using MyMES.Application.Integrations;
+using MyMES.Application.Production;
+using MyMES.Application.Products;
 
 namespace MyMES.Web.Services;
 
@@ -84,7 +84,7 @@ public sealed class MyMesApiClient(HttpClient http)
         {
             query += $"&status={status}";
         }
-        
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             query += $"&search={Uri.EscapeDataString(search)}";
@@ -127,7 +127,7 @@ public sealed class MyMesApiClient(HttpClient http)
         {
             query += $"&activeOnly={activeOnly.Value.ToString().ToLowerInvariant()}";
         }
-        
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             query += $"&search={Uri.EscapeDataString(search)}";
@@ -163,6 +163,9 @@ public sealed class MyMesApiClient(HttpClient http)
         CancellationToken cancellationToken = default) =>
         PostAsync<object, ProductDto>(
             $"api/v1/products/{productId}/versions/{versionId}/obsolete", new { }, cancellationToken);
+
+    public Task<ProductVersionDto?> GetProductVersionDetails(Guid versionId, CancellationToken cancellationToken = default)
+        => GetAsync<ProductVersionDto?>($"api/v1/products/version/{versionId}", cancellationToken);
 
     // -- Users ---------------------------------------------------------------------
 
