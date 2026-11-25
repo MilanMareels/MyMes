@@ -1,5 +1,6 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using MyMES.Application.Security;
 using MyMES.Application;
 using MyMES.Web.Components;
@@ -34,6 +35,13 @@ try
     builder.Services.AddCascadingAuthenticationState();
     builder.Services.AddAuthorization();
     builder.Services.AddScoped<ICurrentUser, WebCurrentUser>();
+
+    // The authentication cookie and anti-forgery tokens are encrypted with ASP.NET Data
+    // Protection. Keep the key ring in a folder this app owns, so a permission hiccup in the
+    // shared %LOCALAPPDATA%\ASP.NET location can never block sign-in.
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "keys")))
+        .SetApplicationName("MyMES.Web");
 
     builder.Services.Configure<LocalizationOptions>(
         builder.Configuration.GetSection(LocalizationOptions.SectionName));

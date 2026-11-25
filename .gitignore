@@ -13,6 +13,9 @@ TestResults/
 appsettings.*.Local.json
 secrets.json
 
+## Data Protection key ring (encryption keys). Never commit these.
+keys/
+
 ## IDE
 .vs/
 .vscode/
